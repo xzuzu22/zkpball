@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Zkpball</title>
+<meta name="description" content="Zkpball: tarayıcıda oynanan, takım ve lig sistemli çevrimiçi futbol oyunu.">
+<link rel="icon" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d3a22">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zkpball">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800&family=Inter:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="style.css?v=29b1662">
+</head>
+<body>
+
+<!-- GİRİŞ -->
+<section class="screen" id="gate">
+  <div class="gate">
+    <img class="logo" src="assets/logo.webp" alt="Zkpball" width="1103" height="200">
+    <form class="panel" id="gateForm">
+      <div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1 1 0"><label class="lbl" for="gNick">Takma adını seç</label><input type="text" id="gNick" maxlength="14" autocomplete="nickname" placeholder="örn. Torriq"></div><div class="field" style="flex:0 0 82px"><label class="lbl" for="gNum">Forma no</label><input type="number" id="gNum" min="1" max="99" inputmode="numeric" placeholder="10"></div></div>
+      <p class="note" style="margin:-4px 0 0">Forma numaranı şimdi ücretsiz seçiyorsun. Sonra değiştirmek için forma değiştirme kartı gerekir (1 tane hediye).</p>
+      <button class="big" type="submit" id="gateGo">Oyuna gir</button>
+      <button class="ghost" type="button" id="gateGoogle" style="justify-content:center">Google ile bağlan</button>
+      <p class="note" id="gateMsg">Nick'le hemen girersin. Google ile bağlarsan profilin, takımın ve satın aldıkların her cihazda seninle gelir.</p>
+    </form>
+    <p class="note"><a href="gizlilik.html">Gizlilik ve çerezler</a></p>
+  </div>
+</section>
+
+<!-- ANA EKRAN -->
+<section class="screen" id="main" hidden>
+  <div class="wrap wide">
+    <div class="topbar">
+      <img src="assets/logo.webp" alt="Zkpball" width="220" height="40">
+      <span class="netdot" id="netState">bağlanıyor</span><span class="tag" id="onlineCount"></span>
+      <button class="me ghost" id="meChip" style="padding:6px 10px"><span class="av" id="meAv"></span><span id="meNick"></span></button>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="rooms" aria-selected="true">Odalar</button>
+      <button role="tab" data-tab="profile" aria-selected="false">Profil</button>
+      <button role="tab" data-tab="team" aria-selected="false">Takım</button>
+      <button role="tab" data-tab="league" aria-selected="false">Lig</button>
+    </nav>
+
+    <!-- ODALAR -->
+    <div class="tabpanel" id="tab-rooms">
+      <div class="panel rejoin" id="rejoinBox" hidden></div>
+      <div class="panel rejoin tutbox" id="tutBox" hidden></div>
+      <div class="install" id="installBox" hidden>
+        <img src="assets/icon-192.png" alt="" width="44" height="44">
+        <div class="itxt"><b>Zkpball'u uygulama olarak ekle</b><span>Ana ekrandan açılır: tam ekran, adres çubuğu yok, daha akıcı.</span></div>
+        <button class="big" id="installBtn" type="button">Ana ekrana ekle</button>
+        <button class="ghost" id="installLater" type="button" aria-label="Şimdi değil">✕</button>
+      </div>
+      <p class="note" id="netMsg"></p>
+      <div class="quickmatch">
+        <button class="big" id="quickBtn">Hızlı eşleş</button>
+        <span class="note" style="flex:1 1 200px;margin:0">Boş yeri olan bir odaya seni hemen atar. Uygun oda yoksa senin için yeni bir oda açar.</span>
+      </div>
+      <div class="panel rqueue" id="rqBox">
+        <div class="rqhead"><b>🏆 Dereceli sıra</b><span class="note" id="rqInfo">Seninle aynı seviyedeki oyuncularla otomatik eşleşirsin. Takımlar puana göre dengelenir.</span></div>
+        <div class="rqbtns" id="rqBtns"><button class="chip" data-m="1">1v1</button><button class="chip" data-m="2">2v2</button><button class="chip" data-m="3">3v3</button></div>
+        <div class="rqwait" id="rqWait" hidden><span class="rqspin"></span><span id="rqTxt"></span><button class="chip" id="rqCancel">İptal</button></div>
+      </div>
+      <div class="cols2">
+        <div class="panel">
+          <h2>Odalar <span class="tag" id="roomCount">0</span></h2>
+          <div class="rooms" id="roomList"></div>
+          <div class="row" style="align-items:flex-end">
+            <div class="field"><label class="lbl" for="inCode">Gizli odaya kodla gir</label><input type="text" id="inCode" maxlength="6" placeholder="örn. k7qa" autocomplete="off"></div>
+            <button class="chip" id="joinCode">Katıl</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Oda kur</h2>
+          <div class="field"><label class="lbl" for="inRoomName">Oda adı</label><input type="text" id="inRoomName" maxlength="28" placeholder="Akşam maçı"></div>
+          <div class="lbl">Saha</div>
+          <div class="row" id="rdMap"><button class="chip" data-v="classic">Classic · 1v1–2v2</button><button class="chip" data-v="big">Big · 3v3–4v4</button><button class="chip" data-v="huge">Huge · 5v5</button></div>
+          <div class="lbl">Oyun modu</div>
+          <div class="row" id="rdMode"><button class="chip" data-v="normal">⚽ Normal</button><button class="chip" data-v="futsal">🥅 Futsal</button><button class="chip" data-v="tek">☝️ Tek dokunuş</button><button class="chip" data-v="dev">🥅 Dev kale</button><button class="chip" data-v="buz">🧊 Buzlu zemin</button></div>
+          <p class="note" id="rdModeNote" style="margin:0"></p>
+          <div class="lbl">En fazla oyuncu</div>
+          <div class="row" id="rdMax"><button class="chip" data-v="2">2</button><button class="chip" data-v="4">4</button><button class="chip" data-v="6">6</button><button class="chip" data-v="8">8</button><button class="chip" data-v="10">10</button><button class="chip" data-v="16">16</button></div>
+          <div class="lbl">Süre ve gol sınırı</div>
+          <div class="row" id="rdTime"><button class="chip" data-v="180">3 dk</button><button class="chip" data-v="300">5 dk</button><button class="chip" data-v="420">7 dk</button></div>
+          <div class="row" id="rdGoals"><button class="chip" data-v="0">Gol sınırı yok</button><button class="chip" data-v="3">3 gol</button><button class="chip" data-v="5">5 gol</button><button class="chip" data-v="7">7 gol</button></div>
+          <label class="toggle"><input type="checkbox" id="rdPriv"> Gizli oda (listede görünmez, kodla girilir)</label>
+          <button class="big" id="createRoom">Odayı kur</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Çevrimiçi oyuncular</h2>
+        <p class="note" style="margin:0">İstatistiklerini görmek için bir oyuncuya dokun.</p>
+        <div class="plist online" id="onlineList"></div>
+      </div>
+      <div class="panel">
+        <h2>Arkadaşlar</h2>
+        <div class="flist" id="friendList"></div>
+      </div>
+      <div class="panel">
+        <h2>Lobi sohbeti</h2>
+        <div class="chat">
+          <div class="chatlog" id="lcLog" aria-live="polite"></div>
+          <form class="chatrow" id="lcForm"><input type="text" id="lcIn" maxlength="80" placeholder="Herkese yaz…" autocomplete="off"><button class="chip" type="submit">Gönder</button></form>
+        </div>
+      </div>
+      <div class="adslot" id="adLobby" hidden aria-label="Reklam"></div>
+      <div class="panel">
+        <h2>Antrenman</h2>
+        <div class="lbl">Görevler</div>
+        <div class="drills" id="drillList"></div>
+        <div class="lbl" style="margin-top:6px">Serbest maç</div>
+        <p class="note">Botlara karşı tek başına oyna. Bağlantı gerekmez.</p>
+        <div class="lbl">Format</div>
+        <div class="row" id="optSize"><button class="chip" data-v="0">1v0</button><button class="chip" data-v="1">1v1</button><button class="chip" data-v="2">2v2</button><button class="chip" data-v="3">3v3</button><button class="chip" data-v="4">4v4</button><button class="chip" data-v="5">5v5</button></div>
+        <div class="lbl">Bot seviyesi</div>
+        <div class="row" id="optDiff"><button class="chip" data-v="0">Kolay</button><button class="chip" data-v="1">Normal</button><button class="chip" data-v="2">Zor</button></div>
+        <div class="lbl">Süre</div>
+        <div class="row" id="optTime"><button class="chip" data-v="120">2 dk</button><button class="chip" data-v="180">3 dk</button><button class="chip" data-v="300">5 dk</button></div>
+        <div class="lbl">Saha görünümü <span class="pro">Premium</span></div>
+        <div class="row" id="optSkin"><button class="chip skin" data-v="classic"><i class="skc"></i>Klasik</button><button class="chip skin" data-v="night"><img src="assets/skin-night.webp" alt="">Gece Işıkları</button><button class="chip skin" data-v="snow"><img src="assets/skin-snow.webp" alt="">Kar Fırtınası</button><button class="chip skin" data-v="beach"><img src="assets/skin-beach.webp" alt="">Plaj</button><button class="chip skin" data-v="rain"><img src="assets/skin-rain.webp" alt="">Sağanak</button><button class="chip skin" data-v="drizzle"><img src="assets/skin-rain.webp" alt="">Çisenti</button><button class="chip skin" data-v="sakura"><img src="assets/skin-sakura.webp" alt="">Kiraz Bahçesi</button></div>
+        <button class="ghost" id="playBtn" style="justify-content:center">Botlara karşı oyna</button>
+        <p class="note">Telefon: sol tarafa dokunup sürükle = hareket, sağdaki ŞUT = vuruş. Bilgisayar: oklar / WASD, şut için Boşluk veya X. Maçta Enter ile sohbet.</p>
+      </div>
+    </div>
+
+    <!-- PROFİL -->
+    <div class="tabpanel" id="tab-profile" hidden>
+      <div class="cols2">
+        <div class="panel">
+          <h2>Profil</h2>
+          <div class="preview"><canvas id="prevCv" width="300" height="300" style="width:150px;height:150px"></canvas></div>
+          <div class="row">
+            <div class="field"><label class="lbl" for="inName">Takma ad</label><input type="text" id="inName" maxlength="14"></div>
+            
+          </div>
+          <div class="jerseybox" id="jerseyBox"></div>
+          <div class="lbl">İsim rengi <span class="pro">Premium</span></div>
+          <div class="row" id="nameColors"></div>
+          <div class="lbl">Gol sevinci <span class="pro">Premium</span></div>
+          <div class="row" id="celChips"><button class="chip" data-v="none">Yok</button><button class="chip" data-v="confetti">🎊 Konfeti</button><button class="chip" data-v="fireworks">🎆 Havai fişek</button><button class="chip" data-v="fire">🔥 Ateş izi</button><button class="chip" data-v="banner">🏆 Altın pankart</button></div>
+          <p class="note" style="margin-top:-4px">Gol atınca seçtiğin sevinç oynar, odadaki herkes görür.</p>
+          <div class="lbl">Top deseni <span class="pro">Premium</span></div>
+          <div class="row" id="ballChips"></div>
+          <p class="note" style="margin-top:-4px">Top deseni sadece senin ekranında görünür.</p>
+          <div class="lbl">Koşu izi <span class="pro">Premium</span></div>
+          <div class="row" id="trailChips"></div>
+          <p class="note" style="margin-top:-4px">Koşarken arkanda bıraktığın iz; odadaki herkes görür.</p>
+          <p class="note" id="saveState"></p>
+          <button class="chip" id="bugBtn" type="button">🐞 Hata bildir</button>
+          <button class="chip" id="adminBtn" hidden onclick="location.hash='#admin'">🛡️ Yönetici paneli</button>
+        </div>
+        <div class="panel">
+          <h2>Hesap</h2>
+          <p class="note" id="acctInfo"></p>
+          <button class="ghost" id="googleLink" style="justify-content:center">Google ile bağla</button>
+          <button class="ghost" id="changeNick" style="justify-content:center">Çıkış yap</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>İstatistiklerim</h2>
+        <div id="myStats"></div>
+      </div>
+      <div class="panel">
+        <h2>📱 Bildirimler</h2>
+        <div id="pushBox"><p class="note">Yükleniyor…</p></div>
+      </div>
+      <div class="panel">
+        <h2>Görevler</h2>
+        <div class="questbox" id="questBox"><p class="note">Yükleniyor…</p></div>
+      </div>
+      <div class="panel">
+        <h2>Mağaza <span class="pro">Premium</span></h2>
+        <p class="note">Test sürümü: aşağıdakilerin hepsi şu an herkese ücretsiz açık.</p>
+        <button class="ghost" id="adReward" hidden style="justify-content:center">Reklam izle, premium forma desenini 1 gün dene</button>
+        <div class="store">
+          <div class="item"><b>Renkli isim</b>Sahada ve sohbette renkli takma ad. Kalıcı.<span class="price">14,90 TL</span></div>
+          <div class="item" id="storeJersey"><b>Forma değiştirme kartı</b>Forma numaranı bir kez değiştirir. Her yeni hesaba 1 kart hediye.<span class="price">9,90 TL</span><button class="chip go" id="buyJersey" type="button">Kart al</button><small class="note" id="jerseyOwned"></small></div>
+          <div class="item"><b>Başlangıç paketi</b>Renkli isim + 2 forma değiştirme kartı birlikte.<span class="price">24,90 TL</span></div>
+          <div class="item"><img class="itimg" src="assets/skin-pack.webp" alt="Gece, kar ve plaj sahaları"><b>Saha görünümleri</b>Gece Işıkları ve Plaj. Oda sahibi seçer, odadaki herkes o sahada oynar.<span class="price">19,90 TL her biri</span></div>
+          <div class="item"><img class="itimg" src="assets/skin-rain.webp" alt="Yağmurlu gece sahası"><b>Efektli sahalar</b>Kar Fırtınası: yağan kar, karlı kenarlar. Sağanak: bardaktan boşanan yağmur, arada şimşek ve gök gürültüsü. Çisenti: aynı ıslak gece, ince ince çiseleyen yağmur. Kiraz Bahçesi: rüzgârla savrulan kiraz yaprakları.<span class="price">34,90 TL her biri · 6 saha birlikte 99,90 TL</span></div>
+          <div class="item"><b>Gol sevinçleri</b>Konfeti, havai fişek, ateş izi ve altın pankart. Gol atınca sahada oynar, odadaki herkes görür. Her biri kalıcı.<span class="price">9,90 TL her biri</span></div>
+          <div class="item"><b>Premium üyelik</b>Bütün kozmetikler + her ay yeni özel forma deseni.<span class="price">29,90 TL / ay</span></div>
+          <div class="item"><b>Takım premium</b>Desenli forma, takım logosu, 16 kişilik kadro. Kaptan alır, tüm takım kullanır.<span class="price">49,90 TL</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAKIM -->
+    <div class="tabpanel" id="tab-team" hidden></div>
+
+    <!-- LİG -->
+    <div class="tabpanel" id="tab-league" hidden>
+      <div class="panel">
+        <h2>Lig</h2>
+        <p class="note">Her yeni takım 6. Lig'den başlar. Sezon sonunda her ligin ilk 2'si üst lige çıkar, son 2'si alt lige düşer. Lig maçlarını takımlar gün ve saat belirleyerek oynar.</p>
+        <div class="leaguegrid" id="leagueGrid"></div>
+      </div>
+    </div>
+  </div>
+  <p class="note" style="text-align:center;padding-bottom:16px"><a href="gizlilik.html">Gizlilik ve çerezler</a> · <button class="back" id="openConsent" style="display:inline;padding:0">Çerez tercihim</button></p>
+</section>
+
+<!-- ÇEREZ ONAYI -->
+<div class="consent" id="consent" hidden role="dialog" aria-label="Çerez tercihi">
+  <p>Oyunun çalışması için gerekli kayıtları tutuyoruz. Ücretsiz kalabilmek için reklam gösteriyoruz; reklam ortaklarımız çerez kullanabilir. Ayrıntılar: <a href="gizlilik.html">Gizlilik ve çerezler</a>.</p>
+  <div class="row"><button class="chip" id="consentMin">Sadece gerekli</button><button class="big" id="consentAll" style="font-size:18px;padding:8px 16px">Kabul et</button></div>
+</div>
+
+<!-- ODA -->
+<section class="screen" id="roomScr" hidden>
+  <div class="wrap wide">
+    <div class="roomhead">
+      <button class="back" id="leaveRoom">← Odadan çık</button>
+      <div class="t"><h2 id="rName">Oda</h2><div class="note" id="rMeta"></div></div>
+      <button class="chip" id="copyCode">Kod: <b id="rCode"></b></button>
+    </div>
+    <div class="panel" id="rStatus"></div>
+    <div class="panel invpanel" id="invPanel" hidden></div>
+    <div class="teams3">
+      <div class="tcol" id="col0"><h3><canvas width="40" height="40" style="width:20px;height:20px"></canvas><span></span><em></em></h3><div class="plist"></div><button class="join" data-team="red">Bu takıma geç</button></div>
+      <div class="tcol" id="colS" style="--tc:#8a9a88"><h3><span>İzleyiciler</span><em></em></h3><div class="plist"></div><button class="join" data-team="spec">İzleyici ol</button></div>
+      <div class="tcol" id="col1"><h3><canvas width="40" height="40" style="width:20px;height:20px"></canvas><span></span><em></em></h3><div class="plist"></div><button class="join" data-team="blue">Bu takıma geç</button></div>
+    </div>
+    <div class="panel" id="hostPanel" hidden>
+      <div class="hphead"><h2>Oda ayarları</h2><span class="note">Sadece sen görüyorsun</span></div>
+      <div class="pmenu" id="pMenu" hidden></div>
+      <div class="htabs" role="tablist">
+        <button class="htab" role="tab" data-ht="saha" aria-selected="true">Saha</button>
+        <button class="htab" role="tab" data-ht="mac" aria-selected="false">Maç</button>
+        <button class="htab" role="tab" data-ht="forma" aria-selected="false">Formalar</button>
+        <button class="htab" role="tab" data-ht="oyuncu" aria-selected="false">Oyuncular</button>
+      </div>
+      <div class="hgroup" data-hg="saha">
+        <div class="lbl">Saha boyutu</div>
+        <div class="seg" id="hsMap"><button class="chip" data-v="classic">Classic<small>1v1 · 2v2</small></button><button class="chip" data-v="big">Big<small>3v3 · 4v4</small></button><button class="chip" data-v="huge">Huge<small>5v5</small></button></div>
+        <div class="lbl">Saha görünümü <span class="pro">Premium</span></div>
+        <div class="skingrid" id="hsSkin"><button class="chip skin" data-v="classic"><i class="skc"></i>Klasik</button><button class="chip skin" data-v="night"><img src="assets/skin-night.webp" alt="">Gece Işıkları</button><button class="chip skin" data-v="snow"><img src="assets/skin-snow.webp" alt="">Kar Fırtınası</button><button class="chip skin" data-v="beach"><img src="assets/skin-beach.webp" alt="">Plaj</button><button class="chip skin" data-v="rain"><img src="assets/skin-rain.webp" alt="">Sağanak</button><button class="chip skin" data-v="drizzle"><img src="assets/skin-rain.webp" alt="">Çisenti</button><button class="chip skin" data-v="sakura"><img src="assets/skin-sakura.webp" alt="">Kiraz Bahçesi</button></div>
+      </div>
+      <div class="hgroup" data-hg="mac" hidden>
+        <div class="lbl">Maç süresi</div>
+        <div class="seg" id="hsTime"><button class="chip" data-v="180">3 dk</button><button class="chip" data-v="300">5 dk</button><button class="chip" data-v="420">7 dk</button></div>
+        <div class="lbl">Gol sınırı</div>
+        <div class="seg" id="hsGoals"><button class="chip" data-v="0">Yok</button><button class="chip" data-v="3">3 gol</button><button class="chip" data-v="5">5 gol</button><button class="chip" data-v="7">7 gol</button></div>
+        <label class="toggle"><input type="checkbox" id="hsFree"> Oyuncular takımını kendi seçsin <small>(kapalıyken takımları sadece sen değiştirirsin)</small></label>
+      </div>
+      <div class="hgroup" data-hg="forma" hidden>
+        <div class="kits2">
+          <div><div class="lbl">Sol takım</div><div class="kitpick" id="hsKit0"></div></div>
+          <div><div class="lbl">Sağ takım</div><div class="kitpick" id="hsKit1"></div></div>
+        </div>
+      </div>
+      <div class="hgroup" data-hg="oyuncu" hidden>
+        <div class="lbl">Botlar</div>
+        <div class="seg"><button class="chip" id="hsBot0">+ Sola bot</button><button class="chip" id="hsBot1">+ Sağa bot</button><button class="chip" id="hsBotClear">Botları çıkar</button></div>
+        <div class="lbl">Takımlar</div>
+        <div class="seg"><button class="chip" id="hsBalance">Dengeli dağıt</button><button class="chip" id="hsShuffle">Takımları karıştır</button></div>
+        <p class="note">Bir oyuncuya dokununca takımını değiştirebilir, istatistiğine bakabilir ya da odadan çıkarabilirsin.</p>
+      </div>
+      <div class="hpfoot">
+        <button class="big" id="hsStart">Maçı başlat</button>
+        <p class="note">Maçı senin tarayıcın yönetiyor, maç boyunca bu sekmeyi açık ve önde tut.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Oda sohbeti</h2>
+      <div class="chat">
+        <div class="chatlog" id="rcLog" aria-live="polite"></div>
+        <div class="quick" id="rcQuick"></div>
+        <form class="chatrow" id="rcForm"><input type="text" id="rcIn" maxlength="80" placeholder="Odaya yaz…" autocomplete="off"><button class="chip" type="submit">Gönder</button></form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OYUN -->
+<section id="game" hidden>
+  <canvas id="cv"></canvas>
+  <div class="hud" id="hud"></div>
+  <div class="specbadge" id="specBadge" hidden><span>👁 İzliyorsun</span><button class="chip" id="specBack">Odaya dön</button></div>
+  <button class="gbtn" id="pauseBtn">❚❚ Menü</button>
+  <button class="gbtn" id="fsBtn">Tam ekran</button>
+  <button class="gbtn" id="camBtn" title="Kamera (1-7)">🎥 1</button>
+  <div class="camtoast" id="camToast" aria-live="polite"></div>
+  <button class="gbtn" id="ambBtn" hidden>🔊 Ortam</button>
+  <div class="ambpanel" id="ambPanel" hidden>
+    <label class="ambrow"><input type="checkbox" id="ambOn" checked> Ortam sesi</label>
+    <label class="ambrow">Ses <input type="range" id="ambVol" min="0" max="100" step="5" value="60"><span id="ambVolTxt">%60</span></label>
+  </div>
+  <button class="gbtn" id="chatBtn" hidden aria-label="Sohbet">💬 Sohbet</button>
+  <button class="gbtn" id="emoteBtn" hidden aria-label="Emoji">😀</button>
+  <div class="emotebar" id="emoteBar" hidden></div>
+  <div class="gchat" id="gchat"><div class="log" id="gchatLog"></div><div class="quick" id="gchatQuick" hidden></div><form id="gchatForm" hidden><input type="text" id="gchatIn" maxlength="80" placeholder="Mesaj yaz, Enter ile gönder" autocomplete="off"><button class="chip" type="submit">Gönder</button></form></div>
+  <div class="banner" id="banner">GOL!</div>
+  <button id="kickBtn" class="touch-only" aria-label="Şut">ŞUT</button>
+  <div class="overlay rotate" id="rotate"><div class="panel"><h2 style="justify-content:center">Telefonu yan çevir</h2><p class="note">Saha yatay ekranda daha iyi görünür.</p><button class="ghost" id="rotateOk" style="justify-content:center">Böyle devam et</button></div></div>
+  <div class="overlay" id="pauseOv" hidden><div class="panel"><h2 style="justify-content:center">Duraklatıldı</h2><button class="big" id="resumeBtn">Devam</button><button class="ghost" id="quitBtn" style="justify-content:center">Maçı bırak</button><button class="ghost" id="bugBtn2" style="justify-content:center">🐞 Hata bildir</button></div></div>
+  <div class="overlay" id="endOv" hidden><div class="panel"><div class="lbl" style="justify-content:center" id="endLbl">Maç sonu</div><div class="score" id="endScore"></div><div id="endMsg" class="note"></div><div id="endStats" class="endstats"></div><div id="endGoals" class="endgoals" hidden></div><div id="endExtra" class="endextra" hidden></div><button class="big" id="againBtn">Rövanş</button><button class="ghost" id="endMenu" style="justify-content:center">Menü</button></div></div>
+  <div class="overlay" id="repOv" hidden><div class="panel reppanel"><div class="replbl" id="repLbl"></div><canvas id="repCv"></canvas><div class="repctl"><button class="chip" id="repPrev" aria-label="Önceki gol">◀◀</button><button class="chip" id="repPlay" aria-label="Oynat/durdur">❚❚</button><button class="chip" id="repNext" aria-label="Sonraki gol">▶▶</button><button class="chip" id="repSpeed">1x</button><button class="chip" id="repZoom" aria-pressed="false">Yakın</button><button class="chip" id="repSave">Videoyu indir</button><button class="chip" id="repClose">Kapat</button></div><p class="note" id="repMsg"></p></div></div>
+</section>
+
+<div class="overlay statov" id="iosInstall" hidden><div class="panel">
+  <h2 style="justify-content:center">Ana ekrana ekle</h2>
+  <ol class="steps">
+    <li>Safari'de <b>Paylaş</b> düğmesine dokun (yukarı oklu kare <span aria-hidden="true">⬆︎</span>).</li>
+    <li>Listede <b>Ana Ekrana Ekle</b>'yi seç.</li>
+    <li>Sağ üstteki <b>Ekle</b>'ye dokun.</li>
+  </ol>
+  <p class="note">Sonra Zkpball'u ana ekrandaki simgesinden aç. Telefonu yan çevirince oyun tam ekran açılır.</p>
+  <button class="big" id="iosInstallOk" type="button">Tamam</button>
+</div></div>
+<div class="overlay statov" id="statOv" hidden><div class="panel" id="statBody"></div></div>
+
+<script type="module" src="app.js?v=29b1662"></script>
+<div class="invtoast" id="invToast" hidden></div>
+<div class="afktoast" id="afkToast" hidden></div>
+<div class="overlay adminov" id="adminOv" hidden><div class="panel adminpanel"><div class="row" style="justify-content:space-between;align-items:center"><b class="admtitle">Yönetici paneli</b><button class="chip" id="adminClose">Kapat</button></div><div id="adminBody"></div></div></div>
+  <div class="overlay" id="bugOv" hidden><div class="panel bugpanel"><h2>🐞 Hata bildir</h2>
+    <p class="note">Ne oldu? Ne yapıyordun, ne olmasını bekliyordun? Cihaz, tarayıcı, bağlantı ve oyun durumu bilgisi otomatik eklenir.</p>
+    <textarea id="bugText" maxlength="1000" rows="5" placeholder="örn. Gol attım ama skor değişmedi, maç donup kaldı…"></textarea>
+    <p class="note" id="bugMsg"></p>
+    <div class="row"><button class="big" id="bugSend">Gönder</button><button class="ghost" id="bugClose">Vazgeç</button></div></div></div>
+<div class="overlay" id="cardOv" hidden><div class="panel cardpanel"><h2>🪪 Oyuncu kartın</h2><img id="cardImg" alt="Oyuncu kartı"><p class="note" id="cardMsg"></p><div class="row"><button class="big" id="cardShare">Paylaş</button><button class="chip" id="cardDl">İndir</button><button class="ghost" id="cardClose">Kapat</button></div></div></div>
+</body>
+</html>
