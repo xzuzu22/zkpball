@@ -523,3 +523,4 @@ input[type=number]{background:#0b1811;border:1px solid var(--line);border-radius
 .sgrow{display:grid;grid-template-columns:80px 1fr auto;gap:8px;font-size:13px;align-items:center;border-bottom:1px solid var(--line);padding:4px 0}
 .sgrow code{font-weight:700;letter-spacing:.1em}
 .sgrow .ok{color:#7ee29a}.sgrow .off{color:var(--muted)}.sgrow .wait{color:var(--flood)}
+.sgfree{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-weight:600}

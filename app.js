@@ -25,8 +25,8 @@ function showMain(t){if(t)curTab=t;show('main');}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 $('meChip').onclick=()=>showTab('profile');
 
-let OWN={items:new Set(),prem:null};
-const owns=it=>OWN.items.has(it)||(!!OWN.prem&&/^(name_color|skin_|cel_)/.test(it));
+let OWN={items:new Set(),prem:null,free:false,loaded:false};
+const owns=it=>!OWN.loaded||OWN.free||OWN.items.has(it)||(!!OWN.prem&&/^(name_color|skin_|cel_)/.test(it));
 const skinOk=k=>!k||k==='classic'||owns('skin_'+k);
 const celOk=k=>!k||k==='none'||owns('cel_'+k);
 function toast(t){let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';el.setAttribute('role','status');document.body.appendChild(el);}el.textContent=t;el.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('on'),3200);}
@@ -1111,7 +1111,7 @@ const DB={
     if(!LIVE){const d=MOCKDB.get();const p=d.profiles[uid];const c=p.jersey_cards??1;if(c<1)throw new Error('no jersey cards');p.avatar=n;p.jersey_cards=c-1;MOCKDB.put(d);return c-1;}
     const {data,error}=await sb.rpc('use_jersey_card',{p_num:n});if(error)throw error;return data;},
   async myItems(){
-    if(!LIVE){const d=MOCKDB.get();return {items:(d.items||{})[uid]||[],premium_until:null};}
+    if(!LIVE){const d=MOCKDB.get();return {items:(d.items||{})[uid]||[],premium_until:null,free_all:!!d.freeAll};}
     const {data,error}=await sb.rpc('my_items');if(error)throw error;return data||{};},
   async redeemCode(c){
     if(!LIVE){const d=MOCKDB.get();const r=(d.codes||[]).find(x=>x.code===c);if(!r||r.used)throw new Error('invalid code');if(r.exp<Date.now())throw new Error('code expired');r.used=uid;r.used_at=Date.now();
@@ -1122,7 +1122,7 @@ const DB={
       else add(r.item);MOCKDB.put(d);return {item:r.item};}
     const {data,error}=await sb.rpc('redeem_code',{p_code:c});if(error)throw error;return data;},
   async buyJerseyCard(){
-    if(!LIVE){const d=MOCKDB.get();const p=d.profiles[uid];const c=p.jersey_cards??1;if(c>=5)throw new Error('too many cards');p.jersey_cards=c+1;MOCKDB.put(d);return c+1;}
+    if(!LIVE){const d=MOCKDB.get();if(!d.freeAll)throw new Error('not for sale');const p=d.profiles[uid];const c=p.jersey_cards??1;if(c>=5)throw new Error('too many cards');p.jersey_cards=c+1;MOCKDB.put(d);return c+1;}
     const {data,error}=await sb.rpc('buy_jersey_card');if(error)throw error;return data;},
   async saveProfile(){
     const row={nick:cleanStr(prof.name,14)||'Oyuncu',avatar:cleanStr(prof.avatar,2)||'10',name_color:cleanCol(prof.nameColor)};
@@ -1188,6 +1188,7 @@ const DB={
       if(!d.admins.includes(uid))throw new Error('not admin');
       const nick=id=>(d.profiles[id]||{}).nick||'?';
       if(fn==='admin_make_code'){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let c='';for(let i=0;i<6;i++)c+=A[Math.floor(Math.random()*32)];const t=Math.max(5,Math.min(300,args.p_ttl||15));(d.codes=d.codes||[]).push({code:c,item:args.p_item,exp:Date.now()+t*1000,at:Date.now()});MOCKDB.put(d);return {code:c,item:args.p_item,expires_at:new Date(Date.now()+t*1000).toISOString(),ttl:t};}
+      if(fn==='admin_set_free'){d.freeAll=!!args.p_on;MOCKDB.put(d);return d.freeAll;}
       if(fn==='admin_shop_codes')return (d.codes||[]).slice(-20).reverse().map(x=>({code:x.code,item:x.item,created_at:new Date(x.at).toISOString(),expires_at:new Date(x.exp).toISOString(),used_at:x.used_at?new Date(x.used_at).toISOString():null,used_nick:x.used?nick(x.used):null}));
       if(fn==='admin_overview'){const g={};(d.reports||[]).forEach(r=>{const x=g[r.target]=g[r.target]||{id:r.target,nick:nick(r.target),total:0,rs:new Set(),reasons:new Set(),contexts:[],last_at:new Date(r.at).toISOString()};x.total++;x.rs.add(r.reporter);x.reasons.add(r.reason);if(r.ctx)x.contexts.push(r.ctx);});
         return {reports:Object.values(g).map(x=>({...x,reporters:x.rs.size,reasons:[...x.reasons]})),leavers:(d.mockLeavers||[]),bans:(d.mockBans||[]),stats:{players:Object.keys(d.profiles).length,new24:2,matches24:(d.matches||[]).length,teams:Object.keys(d.teams).length}};}
@@ -2149,7 +2150,10 @@ $('bugText').addEventListener('keydown',e=>e.stopPropagation());
 function adminShop(B){
   const h=document.createElement('h2');h.textContent='Mağaza kodu';B.appendChild(h);
   const w=document.createElement('div');w.className='shopgen';B.appendChild(w);
-  w.innerHTML='<p class="note">Ürünü ve süreyi seç, kodu üret, oyuncuya söyle. Oyuncu Profil → Mağaza\'da kodu yazar. Her kod tek kullanımlık; süre dolunca geçersiz olur.</p><div class="row"><select id="sgItem" aria-label="Ürün"></select></div><div class="row" id="sgTtl"></div><button class="big" id="sgGo" type="button">Kod üret</button><div class="sgout" id="sgOut" hidden><b id="sgCode" title="Kopyalamak için dokun"></b><span id="sgLeft"></span></div><div class="sglist" id="sgList"></div>';
+  w.innerHTML='<div class="sgfree"><span id="sgFreeTxt">…</span><button class="chip" id="sgFree" type="button"></button></div><p class="note">Ürünü ve süreyi seç, kodu üret, oyuncuya söyle. Oyuncu Profil → Mağaza\'da kodu yazar. Her kod tek kullanımlık; süre dolunca geçersiz olur.</p><div class="row"><select id="sgItem" aria-label="Ürün"></select></div><div class="row" id="sgTtl"></div><button class="big" id="sgGo" type="button">Kod üret</button><div class="sgout" id="sgOut" hidden><b id="sgCode" title="Kopyalamak için dokun"></b><span id="sgLeft"></span></div><div class="sglist" id="sgList"></div>';
+  const fb=w.querySelector('#sgFree'),ft=w.querySelector('#sgFreeTxt');const showFree=()=>{ft.textContent=OWN.free?'Test dönemi açık: bütün ürünler herkese ücretsiz.':'Ürünler kilitli: yalnızca kodla açılıyor.';fb.textContent=OWN.free?'Ürünleri kilitle':'Herkese ücretsiz aç';fb.className='chip'+(OWN.free?' danger':' go');};
+  let sure=false;fb.onclick=async()=>{if(!sure){sure=true;fb.textContent='Emin misin? Tekrar bas';setTimeout(()=>{sure=false;showFree();},4000);return;}sure=false;fb.disabled=true;try{OWN.free=await DB.adminRpc('admin_set_free',{p_on:!OWN.free});await loadOwned();toast(OWN.free?'Bütün ürünler herkese açıldı':'Ürünler kilitlendi');}catch(e){toast(errText(e));}fb.disabled=false;showFree();};
+  loadOwned().then(showFree);showFree();
   const sel=w.querySelector('#sgItem');Object.entries(ITEM_TR).forEach(([k,n])=>{const o=document.createElement('option');o.value=k;o.textContent=n;sel.appendChild(o);});
   let ttl=15;const tr=w.querySelector('#sgTtl');[5,15,30,60].forEach(t=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=t+' sn';b.setAttribute('aria-pressed',String(t===ttl));b.onclick=()=>{ttl=t;[...tr.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));};tr.appendChild(b);});
   const list=async()=>{const L=w.querySelector('#sgList');try{const r=await DB.adminRpc('admin_shop_codes');L.innerHTML='';if(!r.length)return;const hd=document.createElement('div');hd.className='lbl';hd.textContent='Son kodlar';L.appendChild(hd);
@@ -2556,16 +2560,23 @@ function renderJersey(){
       try{JCARDS=await DB.useJerseyCard(v);prof.avatar=v;save();renderJersey();drawPreview();renderMe();pushLobby();if(NET.room)pushRoom();$('saveState').textContent='Forma numaran '+v+' oldu.';}catch(err){f.querySelector('.note').textContent=/no jersey cards/.test(err.message)?'Kartın kalmamış.':errText(err);}};
     box.appendChild(f);btn.remove();setTimeout(()=>inp.focus());};
   box.append(cur,btn);
-  const sb2=$('buyJersey');if(sb2){sb2.disabled=JCARDS>=5;sb2.textContent=JCARDS>=5?'En fazla 5 kart birikir':'Kart al';}
+  try{renderStore();}catch(e){}
   const own=$('jerseyOwned');if(own)own.textContent=`Elindeki kart: ${JCARDS}`;
 }
 // ---------- Mağaza: ürünler satışta değil, yöneticinin verdiği kısa ömürlü kodla açılır ----------
 const ITEM_TR={name_color:'Renkli isim',jersey_card:'Forma değiştirme kartı',starter:'Başlangıç paketi',skin_night:'Gece Işıkları sahası',skin_beach:'Plaj sahası',skin_snow:'Kar Fırtınası sahası',skin_rain:'Sağanak sahası',skin_drizzle:'Çisenti sahası',skin_sakura:'Kiraz Bahçesi sahası',skins_all:'6 saha birlikte',cel_confetti:'Konfeti sevinci',cel_fireworks:'Havai fişek sevinci',cel_fire:'Ateş izi sevinci',cel_banner:'Altın pankart sevinci',premium:'Premium üyelik (30 gün)',team_premium:'Takım premium'};
-function renderStore(){document.querySelectorAll('.store .item[data-own]').forEach(el=>{const k=el.dataset.own,its=k.split(' ');
+function renderStore(){
+  const fr=OWN.free;const n0=$('storeNote');if(n0)n0.textContent=fr?'Test dönemi: bütün ürünler şu an herkese ücretsiz açık.':'Ürünler şu an satışta değil. Sana verilen kodla açabilirsin.';
+  const rf=$('redeemForm');if(rf)rf.hidden=fr;if(fr&&$('redeemMsg'))$('redeemMsg').textContent='';
+  const sj=$('storeJersey');if(sj){let bj=$('buyJersey');if(fr&&!bj){bj=document.createElement('button');bj.className='chip go';bj.id='buyJersey';bj.type='button';sj.insertBefore(bj,$('jerseyOwned'));
+      bj.onclick=async()=>{bj.disabled=true;try{JCARDS=await DB.buyJerseyCard();renderJersey();$('jerseyOwned').textContent=`Kart eklendi. Elindeki kart: ${JCARDS}`;}catch(e){$('jerseyOwned').textContent=/too many/.test(e.message)?'En fazla 5 kart biriktirebilirsin.':errText(e);}finally{bj.disabled=JCARDS>=5;}};}
+    if(bj){bj.hidden=!fr;bj.disabled=JCARDS>=5;bj.textContent=JCARDS>=5?'En fazla 5 kart birikir':'Ücretsiz kart al';}}
+  document.querySelectorAll('.store .item[data-own]').forEach(el=>{const k=el.dataset.own,its=k.split(' ');
+  if(fr){let st=el.querySelector('.own');if(!st){st=document.createElement('span');el.appendChild(st);}st.className='own yes';st.textContent='✓ Açık · test dönemi';return;}
   const n=k==='team_premium'?(myTeamCache&&myTeamCache.team&&myTeamCache.team.premium?1:0):k==='starter'?0:its.filter(owns).length;const all=n>0&&n>=its.length;
   let st=el.querySelector('.own');if(!st){st=document.createElement('span');el.appendChild(st);}st.className='own'+(all?' yes':n?' part':'');
   st.textContent=k==='premium'&&OWN.prem?'✓ Sende · '+new Date(OWN.prem).toLocaleDateString('tr-TR',{day:'numeric',month:'long'})+' tarihine kadar':all?'✓ Sende':n?`✓ ${n}/${its.length} sende`:'🔒 Kilitli';});}
-async function loadOwned(){try{const r=await DB.myItems();OWN.items=new Set(Array.isArray(r.items)?r.items:[]);OWN.prem=r.premium_until||null;}catch(e){}
+async function loadOwned(){try{const r=await DB.myItems();OWN.items=new Set(Array.isArray(r.items)?r.items:[]);OWN.prem=r.premium_until||null;OWN.free=!!r.free_all;OWN.loaded=true;}catch(e){markLocks();return;}
   const ch=enforceOwned();markLocks();if(ch){try{queueSave();pushTag();}catch(e){}}if(curTab==='profile')renderProfile();}
 $('redeemCode').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
 $('redeemForm').onsubmit=async e=>{e.preventDefault();const inp=$('redeemCode'),msg=$('redeemMsg'),b=e.target.querySelector('button');const c=inp.value.replace(/[^a-z0-9]/gi,'').toUpperCase();
@@ -2605,7 +2616,7 @@ async function renderTeam(){
     const grid=document.createElement('div');grid.className='cols2';
     const a=document.createElement('form');a.className='panel';
     a.innerHTML='<h2>Takım kur</h2><div class="row"><div class="field"><label class="lbl" for="tName">Takım adı</label><input id="tName" type="text" maxlength="24" required minlength="2"></div><div class="field" style="flex:0 1 110px"><label class="lbl" for="tAbbr">Kısaltma</label><input id="tAbbr" type="text" maxlength="3" minlength="2" required></div></div><div id="tKit"></div><button class="big" type="submit">Takımı kur</button><p class="err" id="tErr"></p><p class="note">Takımın 6. Lig\'den başlar. Kaptan sensin; arkadaşlarını takım koduyla davet edersin.</p>';
-    let kit={p:prof.p,s:prof.s,pat:'solid'};a.querySelector('#tKit').appendChild(kitPicker(kit,k=>kit=k,false));
+    let kit={p:prof.p,s:prof.s,pat:'solid'};a.querySelector('#tKit').appendChild(kitPicker(kit,k=>kit=k,OWN.free));
     a.querySelector('#tAbbr').addEventListener('input',e=>{e.target.value=e.target.value.toLocaleUpperCase('tr-TR');});
     a.onsubmit=async e=>{e.preventDefault();const name=cleanStr(a.querySelector('#tName').value,24).trim(),abbr=cleanStr(a.querySelector('#tAbbr').value,3).trim().toLocaleUpperCase('tr-TR');
       if(name.length<2||abbr.length<2){a.querySelector('#tErr').textContent='Takım adı ve kısaltma en az 2 karakter olmalı.';return;}
@@ -2628,7 +2639,7 @@ async function renderTeam(){
   const grid=document.createElement('div');grid.className='cols2';P.appendChild(grid);
   const ros=document.createElement('div');ros.className='panel';ros.innerHTML='<h2>Kadro <span class="tag cnt"></span></h2><div class="roster"></div>';grid.appendChild(ros);
   const side=document.createElement('div');side.className='panel';grid.appendChild(side);
-  try{const ms=await DB.members(t.id);ros.querySelector('.cnt').textContent=ms.length+'/'+(t.premium?16:12);const R=ros.querySelector('.roster');
+  try{const ms=await DB.members(t.id);ros.querySelector('.cnt').textContent=ms.length+'/'+(t.premium||OWN.free?16:12);const R=ros.querySelector('.roster');
     ms.forEach(m=>{const r=document.createElement('div');r.className='r';const av=document.createElement('span');av.className='av';av.style.cssText=`width:24px;height:24px;border-radius:50%;border:2px solid #000;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:12px;background:${kit.p};color:${lum(kit.p)>0.6?'#111':'#fff'}`;av.textContent=cleanStr(m.avatar,2)||'?';
       const nm=document.createElement('span');nm.className='nm';nm.textContent=cleanStr(m.nick,14)+(m.user_id===uid?' (sen)':'');nm.style.color=cleanCol(m.name_color);
       const ro=document.createElement('span');ro.className='role';ro.textContent=m.role;r.append(av,nm,ro);
@@ -2637,7 +2648,7 @@ async function renderTeam(){
   if(cap){side.innerHTML='<h2>Davet</h2><p class="note">Bu kodu takım arkadaşlarına gönder. Takım sekmesinde "Takıma katıl"a yazsınlar.</p><div class="row" style="align-items:center"><span class="codebox" id="tcode">…</span><button class="chip" id="tcopy">Kopyala</button></div><h2 style="margin-top:8px">Takım forması</h2><div id="tkit"></div><button class="chip" id="tkitSave">Formayı kaydet</button><p class="note" id="tkitMsg"></p>';
     DB.teamCode(t.id).then(c=>{side.querySelector('#tcode').textContent=c||'—';}).catch(()=>{side.querySelector('#tcode').textContent='alınamadı';});
     side.querySelector('#tcopy').onclick=()=>{const c=side.querySelector('#tcode').textContent;try{navigator.clipboard.writeText(c);side.querySelector('#tcopy').textContent='Kopyalandı';}catch(e){}};
-    let nk={...cleanKit(t.kit||kit)};side.querySelector('#tkit').appendChild(kitPicker(nk,k=>nk={...k,badge:nk.badge},!!t.premium));if(t.premium)side.querySelector('#tkit').appendChild(badgePicker(nk,k=>nk={...nk,badge:k.badge}));else{const n=document.createElement('p');n.className='note';n.textContent='🔒 Desenli forma, takım arması ve 16 kişilik kadro takım premium ile açılır. Kodu mağazadan kaptan kullanır.';side.querySelector('#tkit').appendChild(n);}
+    let nk={...cleanKit(t.kit||kit)};side.querySelector('#tkit').appendChild(kitPicker(nk,k=>nk={...k,badge:nk.badge},!!t.premium||OWN.free));if(t.premium||OWN.free)side.querySelector('#tkit').appendChild(badgePicker(nk,k=>nk={...nk,badge:k.badge}));else{const n=document.createElement('p');n.className='note';n.textContent='🔒 Desenli forma, takım arması ve 16 kişilik kadro takım premium ile açılır. Kodu mağazadan kaptan kullanır.';side.querySelector('#tkit').appendChild(n);}
     side.querySelector('#tkitSave').onclick=async()=>{try{await DB.updateKit(t.id,cleanKit(nk));side.querySelector('#tkitMsg').textContent='Forma kaydedildi.';myTeamCache.team.kit=cleanKit(nk);renderMe();}catch(e){side.querySelector('#tkitMsg').textContent=errText(e);}};
   } else side.innerHTML='<h2>Takım</h2><p class="note">Formayı ve kadroyu kaptan yönetir. Lig maçları için kaptanınla haberleş.</p>';
   const lv=document.createElement('button');lv.className='ghost';lv.style.justifyContent='center';lv.textContent=cap?'Takımdan ayrıl (kaptanlık en eski oyuncuya geçer)':'Takımdan ayrıl';
@@ -2783,7 +2794,7 @@ function enterMain(){
   chk();setInterval(chk,120000);loadExtra();DB.pingActive().catch(()=>{});setInterval(()=>DB.pingActive().catch(()=>{}),10*60e3);
   loadFriends(true);setInterval(()=>loadFriends(),60000);
   DB.questStatus().then(q=>{QSTARS=Number(q.stars)||0;if(prof.trail&&LOCKS.trail[prof.trail]>QSTARS)prof.trail='none';if(prof.ball&&LOCKS.ball[prof.ball]>QSTARS)prof.ball='classic';}).catch(()=>{});
-  enforceOwned();markLocks();loadOwned();setInterval(loadOwned,10*60e3);
+  loadOwned();setInterval(loadOwned,5*60e3);
   setTimeout(checkAdminRoute,300);DB.adminRpc('is_admin').then(v=>{IS_ADMIN=!!v;const b=$('adminBtn');if(b)b.hidden=!IS_ADMIN;}).catch(()=>{});
   DB.claimRewards().then(r=>{MYREW=Array.isArray(r)?r.filter(x=>cleanTier(x.tier)):[];pushLobby();if(NET.room)pushRoom();}).catch(()=>{});
   DB.myRating().then(r=>{MYR={r:Number(r.rating)||1000,g:Number(r.games)||0};renderMe();pushLobby();}).catch(()=>{});
