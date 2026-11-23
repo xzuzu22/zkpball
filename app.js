@@ -1045,7 +1045,7 @@ const cleanKit=k=>{const o={p:cleanCol(k&&k.p),s:cleanCol(k&&k.s),pat:PATTERNS.s
 const BADGE_SH=['shield','circle','hex','star'],BADGE_IC=['⚽','🦅','🐺','🦁','⚡','🔥','👑','⭐','🐉','🌙','⚓','🗡️'];
 
 // ---------- Alan adı taşıma: eski adres oyuncuyu hesabıyla birlikte zkpball.com'a gönderir ----------
-const NEW_HOME='https://zkpball.com',OLD_HOSTS=['xzuzu22.github.io'],MOVE_LIVE=false;
+const NEW_HOME='https://zkpball.com',OLD_HOSTS=['xzuzu22.github.io'],MOVE_LIVE=true;
 (function moveHome(){if(!MOVE_LIVE||!OLD_HOSTS.includes(location.hostname))return;
   let tok='',pj='';try{const k=Object.keys(localStorage).find(x=>/^sb-.*-auth-token$/.test(x));const v=k&&JSON.parse(localStorage.getItem(k));tok=v&&v.refresh_token||'';}catch(e){}
   try{const p=localStorage.getItem('uzk-profile');if(p&&p.length<1500)pj=btoa(unescape(encodeURIComponent(p))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}catch(e){}
