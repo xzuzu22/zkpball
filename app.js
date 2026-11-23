@@ -431,11 +431,12 @@ function aiThink(p){
 // ---------- Simülasyon adımı ----------
 function step(){
   if(G.state==='goal'){G.stateT--;if(G.stateT<=0){if(G.drill){$('banner').classList.remove('on');G.state='play';if(G.drill.kind==='tut'){if(G.drill.after){G.drill.after=false;tutNext();}return;}drillNext();return;}if(G.over){endMatch();return;}resetPositions();G.state='play';$('banner').classList.remove('on');}
-    integrate(false);return;}
+    // Gol sonrası: oyuncular serbestçe koşup sevinebilir, şut yok; top ağda yavaşlayıp durur ve itilemez
+    if(G.drill){integrate(false);return;}
+    G.tick=(G.tick||0)+1;readInputs();integrate(true,true);return;}
   if(G.tick%10===0){aiAssign(0);aiAssign(1);}
   G.tick=(G.tick||0)+1;
-  const NI=G.net?netHostInputs():null;
-  for(const p of G.players){if(p.local)humanInput(p);else if(p.human){const i=NI&&NI[p.pid];if(Array.isArray(i)){const ik=i.join();if(ik!==p.lastKey){p.lastKey=ik;p.lastActTick=G.tick;}p.ix=Math.max(-1,Math.min(1,Number(i[0])/10||0));p.iy=Math.max(-1,Math.min(1,Number(i[1])/10||0));p.kick=!!i[2];}else{p.ix=p.iy=0;p.kick=false;}}else aiThink(p);}
+  readInputs();
   integrate(true);
   if(G.net&&G.net.role==='host'&&G.tick%30===0)afkCheck();
   if(!G.kickoff&&!G.golden&&!G.training){G.clock-=1/60;if(G.clock<=0){G.clock=0;if(G.score[0]!==G.score[1]){sWhistle(0.5,3);endMatch();return;}else{G.golden=true;}}}
@@ -443,13 +444,17 @@ function step(){
   if(Math.abs(G.ball.x)>FW+G.ball.r&&Math.abs(G.ball.y)<GH){if(G.drill)drillGoal(G.ball.x>0?0:1);else goal(G.ball.x>0?0:1);}
   if(G.tick%15===0)renderHud();
 }
-function integrate(live){
+function readInputs(){
+  const NI=G.net?netHostInputs():null;
+  for(const p of G.players){if(p.local)humanInput(p);else if(p.human){const i=NI&&NI[p.pid];if(Array.isArray(i)){const ik=i.join();if(ik!==p.lastKey){p.lastKey=ik;p.lastActTick=G.tick;}p.ix=Math.max(-1,Math.min(1,Number(i[0])/10||0));p.iy=Math.max(-1,Math.min(1,Number(i[1])/10||0));p.kick=!!i[2];}else{p.ix=p.iy=0;p.kick=false;}}else aiThink(p);}
+}
+function integrate(live,after=false){
   // Haxball sırası: 1) girdi + şut  2) hareket + sürtünme  3) çarpışmalar (önce top)
   const b=G.ball,ps=G.players;
   for(const p of ps){
     if(live){
       const a=p.kick?PH.pak:PH.pa;p.vx+=p.ix*a;p.vy+=p.iy*a;
-      if(p.kick&&p.armed){
+      if(p.kick&&p.armed&&!after){
         const dx=b.x-p.x,dy=b.y-p.y,d=Math.hypot(dx,dy);
         if(d>0&&d-p.r-b.r<4&&!(PH.one&&G.lastKicker===p&&G.t1===p)){b.vx+=dx/d*PH.kick*b.im;b.vy+=dy/d*PH.kick*b.im;p.armed=false;G.kickoff=false;sKick(1);G.kseq++;touch(p);G.lastKicker=p;}
       }
@@ -457,9 +462,9 @@ function integrate(live){
     if(!p.kick)p.armed=true;
   }
   for(const p of ps){p.x+=p.vx;p.y+=p.vy;p.vx*=PH.pd;p.vy*=PH.pd;}
-  b.x+=b.vx;b.y+=b.vy;b.vx*=PH.bd;b.vy*=PH.bd;
+  b.x+=b.vx;b.y+=b.vy;const bd=after?0.86:PH.bd;b.vx*=bd;b.vy*=bd;if(after&&Math.hypot(b.vx,b.vy)<0.05)b.vx=b.vy=0;
   // sekme katsayısı iki cismin katsayılarının çarpımı: oyuncu 0.5 × top 0.5 = 0.25
-  for(const p of ps){if(collide(p,b,0.25)){G.kickoff=false;touch(p);}}
+  if(!after)for(const p of ps){if(collide(p,b,0.25)){G.kickoff=false;touch(p);}}
   for(const q of posts){if(collide(q,b,0.25))sKick(0.4);}
   ballWalls(b);
   for(let i=0;i<ps.length;i++)for(let j=i+1;j<ps.length;j++)collide(ps[i],ps[j],0.25);
