@@ -351,14 +351,17 @@ function ballWalls(b){
 // ---------- Girdi ----------
 const keys={};
 const isTyping=e=>{const t=e.target;return t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA');};
-addEventListener('keydown',e=>{if(isTyping(e))return;if(e.key==='Enter'&&G&&G.net&&!$('game').hidden){e.preventDefault();openChat();return;}keys[e.code]=true;if(G&&!$('game').hidden&&['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='Escape'&&G&&!$('game').hidden)togglePause();});
+addEventListener('keydown',e=>{if(isTyping(e))return;if(e.key==='Enter'&&G&&G.net&&!$('game').hidden){e.preventDefault();openChat();return;}keys[e.code]=true;if(G&&!$('game').hidden&&(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)||KICK_KEYS.includes(e.code)))e.preventDefault();if(e.code==='Escape'&&G&&!$('game').hidden)togglePause();});
 addEventListener('keyup',e=>{if(isTyping(e))return;keys[e.code]=false;});
-const joy={id:null,ox:0,oy:0,x:0,y:0};let kickTouch=false;
+const joy={id:null,ox:0,oy:0,x:0,y:0};let kickTouch=false;let mouseKick=false;
+// Klavye ghosting: çoğu klavye iki ok + Boşluk'u aynı anda okuyamaz. Bu yüzden ok tuşlarından farklı bölgedeki tuşlar ve fare tıklaması da şut sayılır.
+const KICK_KEYS=['Space','KeyX','KeyC','KeyZ','ShiftLeft','ShiftRight','Numpad0','Slash','Period'];
+addEventListener('pointerup',e=>{if(e.pointerType==='mouse'&&e.button===0)mouseKick=false;});addEventListener('pointercancel',e=>{if(e.pointerType==='mouse')mouseKick=false;});addEventListener('blur',()=>{for(const k in keys)keys[k]=false;mouseKick=false;});
 const gameEl=$('game');
 gameEl.addEventListener('pointerdown',e=>{
   audio();
   if(e.target.closest('button'))return;
-  if(e.pointerType==='mouse')return;
+  if(e.pointerType==='mouse'){if(e.button===0&&!e.target.closest('.overlay,input,textarea,a')){mouseKick=true;e.preventDefault();}return;}
   if(e.clientX<innerWidth*0.55&&joy.id===null){joy.id=e.pointerId;joy.ox=e.clientX;joy.oy=e.clientY;joy.x=joy.y=0;}
   else if(e.clientX>=innerWidth*0.55){kickTouch=true;e.target.dataset.kp=e.pointerId;}
 });
@@ -375,7 +378,7 @@ function humanInput(p){
   if(keys.ArrowLeft||keys.KeyA)x-=1;if(keys.ArrowRight||keys.KeyD)x+=1;if(keys.ArrowUp||keys.KeyW)y-=1;if(keys.ArrowDown||keys.KeyS)y+=1;
   if(joy.id!==null){const m=Math.hypot(joy.x,joy.y);if(m>0.18){x=joy.x;y=joy.y;}}
   const m=Math.hypot(x,y);if(m>1){x/=m;y/=m;}
-  p.ix=x;p.iy=y;p.kick=!!(keys.Space||keys.KeyX||kickTouch);
+  p.ix=x;p.iy=y;p.kick=!!(KICK_KEYS.some(k=>keys[k])||mouseKick||kickTouch);
 }
 
 // ---------- Yapay zekâ ----------
