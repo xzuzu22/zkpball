@@ -501,3 +501,25 @@ input[type=number]{background:#0b1811;border:1px solid var(--line);border-radius
 @media (max-width:600px){.teams3{grid-template-columns:1fr}.teams3>:nth-child(2){order:3}.pchip{font-size:14px;padding:7px 9px}}
 
 .rankbar{grid-template-columns:auto auto 1fr}.rankbar .rbig{grid-row:span 2}.rankbar .rbig svg,.rankbar .rbig img{width:64px;height:64px;display:block}.rankbar i{grid-column:2 / -1}
+/* Mağaza kodları */
+.redeem{display:flex;gap:8px;flex-wrap:wrap}
+.redeem input{flex:1 1 140px;min-width:0;font-family:var(--f-display);font-weight:800;font-size:20px;letter-spacing:.18em;text-transform:uppercase}
+.okmsg{color:#7ee29a !important;font-weight:600}
+.store .item .own{margin-top:auto;font-size:12px;font-weight:700;color:var(--muted)}
+.store .item .own.yes{color:#7ee29a}
+.store .item .own.part{color:var(--flood)}
+.sw.locked{opacity:.3;position:relative}
+.sw.locked::after{content:"🔒";position:absolute;inset:0;display:grid;place-items:center;font-size:11px}
+.chip.locked::after{content:" 🔒";font-size:11px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:90;background:#0b1a11;border:1px solid var(--flood);color:var(--chalk);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;max-width:calc(100vw - 32px);text-align:center;transition:opacity .2s,transform .2s}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.shopgen{display:flex;flex-direction:column;gap:10px}
+.shopgen select{background:var(--pitch);color:var(--chalk);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:15px;width:100%}
+.sgout{display:flex;flex-direction:column;align-items:center;gap:4px;border:2px solid var(--flood);border-radius:12px;padding:14px}
+.sgout b{font-family:var(--f-display);font-weight:800;font-size:48px;letter-spacing:.2em;color:var(--flood);cursor:pointer;line-height:1}
+.sgout span{font-size:14px;color:var(--muted)}
+.sgout.dead{border-color:var(--line)}.sgout.dead b{color:var(--muted);text-decoration:line-through}
+.sglist{display:flex;flex-direction:column;gap:4px}
+.sgrow{display:grid;grid-template-columns:80px 1fr auto;gap:8px;font-size:13px;align-items:center;border-bottom:1px solid var(--line);padding:4px 0}
+.sgrow code{font-weight:700;letter-spacing:.1em}
+.sgrow .ok{color:#7ee29a}.sgrow .off{color:var(--muted)}.sgrow .wait{color:var(--flood)}

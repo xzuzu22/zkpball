@@ -25,14 +25,30 @@ function showMain(t){if(t)curTab=t;show('main');}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 $('meChip').onclick=()=>showTab('profile');
 
-function bindChips(id,key,num=true){
+let OWN={items:new Set(),prem:null};
+const owns=it=>OWN.items.has(it)||(!!OWN.prem&&/^(name_color|skin_|cel_)/.test(it));
+const skinOk=k=>!k||k==='classic'||owns('skin_'+k);
+const celOk=k=>!k||k==='none'||owns('cel_'+k);
+function toast(t){let el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';el.setAttribute('role','status');document.body.appendChild(el);}el.textContent=t;el.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('on'),3200);}
+function lockMsg(w){toast(`🔒 ${w} kilitli. Mağazadan kodla açabilirsin.`);}
+function enforceOwned(){let ch=false;
+  if(!owns('name_color')&&prof.nameColor&&prof.nameColor!=='#ffffff'){prof.nameColor='#ffffff';ch=true;}
+  if(!celOk(prof.cel)){prof.cel='none';ch=true;}
+  if(!skinOk(prof.skin)){prof.skin='classic';ch=true;}
+  if(ch)save();return ch;}
+function markLocks(){
+  ['optSkin','hsSkin'].forEach(id=>document.getElementById(id)?.querySelectorAll('.chip').forEach(c=>c.classList.toggle('locked',!skinOk(c.dataset.v))));
+  document.getElementById('celChips')?.querySelectorAll('.chip').forEach(c=>c.classList.toggle('locked',!celOk(c.dataset.v)));
+  [['optSkin','skin'],['celChips','cel']].forEach(([id,k])=>document.getElementById(id)?.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',String(String(prof[k])===c.dataset.v))));
+  try{renderStore();}catch(e){}}
+function bindChips(id,key,num=true,guard){
   const box=$(id);
   const sync=()=>box.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',String(String(prof[key])===c.dataset.v)));
-  box.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{prof[key]=num?Number(c.dataset.v):c.dataset.v;save();sync();});
+  box.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const v=num?Number(c.dataset.v):c.dataset.v;if(guard&&!guard(v))return;prof[key]=v;save();sync();});
   sync();
 }
-bindChips('optSize','size');bindChips('optDiff','diff');bindChips('optTime','time');bindChips('optSkin','skin',false);
-document.querySelectorAll('#hostPanel .htab').forEach(t=>t.onclick=()=>{document.querySelectorAll('#hostPanel .htab').forEach(x=>x.setAttribute('aria-selected',String(x===t)));document.querySelectorAll('#hostPanel .hgroup').forEach(g=>g.hidden=g.dataset.hg!==t.dataset.ht);});bindChips('celChips','cel',false);document.getElementById('celChips').addEventListener('click',()=>{try{pushTag();}catch(e){}});
+bindChips('optSize','size');bindChips('optDiff','diff');bindChips('optTime','time');bindChips('optSkin','skin',false,v=>skinOk(v)||(lockMsg('Bu saha'),false));
+document.querySelectorAll('#hostPanel .htab').forEach(t=>t.onclick=()=>{document.querySelectorAll('#hostPanel .htab').forEach(x=>x.setAttribute('aria-selected',String(x===t)));document.querySelectorAll('#hostPanel .hgroup').forEach(g=>g.hidden=g.dataset.hg!==t.dataset.ht);});bindChips('celChips','cel',false,v=>celOk(v)||(lockMsg('Bu gol sevinci'),false));document.getElementById('celChips').addEventListener('click',()=>{try{pushTag();}catch(e){}});
 ['optSkin','hsSkin'].forEach(id=>document.getElementById(id)?.addEventListener('click',e=>{const c=e.target.closest('.chip');if(c)skinImg(c.dataset.v);}));
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
@@ -1086,6 +1102,17 @@ const DB={
   async useJerseyCard(n){
     if(!LIVE){const d=MOCKDB.get();const p=d.profiles[uid];const c=p.jersey_cards??1;if(c<1)throw new Error('no jersey cards');p.avatar=n;p.jersey_cards=c-1;MOCKDB.put(d);return c-1;}
     const {data,error}=await sb.rpc('use_jersey_card',{p_num:n});if(error)throw error;return data;},
+  async myItems(){
+    if(!LIVE){const d=MOCKDB.get();return {items:(d.items||{})[uid]||[],premium_until:null};}
+    const {data,error}=await sb.rpc('my_items');if(error)throw error;return data||{};},
+  async redeemCode(c){
+    if(!LIVE){const d=MOCKDB.get();const r=(d.codes||[]).find(x=>x.code===c);if(!r||r.used)throw new Error('invalid code');if(r.exp<Date.now())throw new Error('code expired');r.used=uid;r.used_at=Date.now();
+      d.items=d.items||{};const L=d.items[uid]=d.items[uid]||[];const add=i=>{if(!L.includes(i))L.push(i);};const p=d.profiles[uid];
+      if(r.item==='jersey_card'||r.item==='starter'){p.jersey_cards=(p.jersey_cards??1)+(r.item==='starter'?2:1);if(r.item==='starter')add('name_color');}
+      else if(r.item==='skins_all')['skin_night','skin_beach','skin_snow','skin_rain','skin_drizzle','skin_sakura'].forEach(add);
+      else if(r.item==='team_premium'){const t=Object.values(d.teams).find(t=>t.owner===uid);if(!t)throw new Error('not captain');t.premium=true;}
+      else add(r.item);MOCKDB.put(d);return {item:r.item};}
+    const {data,error}=await sb.rpc('redeem_code',{p_code:c});if(error)throw error;return data;},
   async buyJerseyCard(){
     if(!LIVE){const d=MOCKDB.get();const p=d.profiles[uid];const c=p.jersey_cards??1;if(c>=5)throw new Error('too many cards');p.jersey_cards=c+1;MOCKDB.put(d);return c+1;}
     const {data,error}=await sb.rpc('buy_jersey_card');if(error)throw error;return data;},
@@ -1095,7 +1122,7 @@ const DB={
     const {error}=await sb.from('profiles').upsert({id:uid,...row,updated_at:new Date().toISOString()});if(error)throw error;},
   async myTeam(){
     if(!LIVE){const d=MOCKDB.get();const m=d.members.find(m=>m.user_id===uid);return m?{role:m.role,team:d.teams[m.team_id]}:null;}
-    const {data,error}=await sb.from('team_members').select('role,teams(id,name,abbr,kit,tier,points,played,won,drawn,lost,gf,ga,owner,xp)').eq('user_id',uid).maybeSingle();
+    const {data,error}=await sb.from('team_members').select('role,teams(id,name,abbr,kit,tier,points,played,won,drawn,lost,gf,ga,owner,xp,premium)').eq('user_id',uid).maybeSingle();
     if(error)throw error;return data&&data.teams?{role:data.role,team:data.teams}:null;},
   async teams(){
     if(!LIVE){return Object.values(MOCKDB.get().teams);}
@@ -1152,6 +1179,8 @@ const DB={
       if(fn==='claim_admin'){if(args.p_code==='UZK-TEST'){d.admins.push(uid);MOCKDB.put(d);return true;}return false;}
       if(!d.admins.includes(uid))throw new Error('not admin');
       const nick=id=>(d.profiles[id]||{}).nick||'?';
+      if(fn==='admin_make_code'){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let c='';for(let i=0;i<6;i++)c+=A[Math.floor(Math.random()*32)];const t=Math.max(5,Math.min(300,args.p_ttl||15));(d.codes=d.codes||[]).push({code:c,item:args.p_item,exp:Date.now()+t*1000,at:Date.now()});MOCKDB.put(d);return {code:c,item:args.p_item,expires_at:new Date(Date.now()+t*1000).toISOString(),ttl:t};}
+      if(fn==='admin_shop_codes')return (d.codes||[]).slice(-20).reverse().map(x=>({code:x.code,item:x.item,created_at:new Date(x.at).toISOString(),expires_at:new Date(x.exp).toISOString(),used_at:x.used_at?new Date(x.used_at).toISOString():null,used_nick:x.used?nick(x.used):null}));
       if(fn==='admin_overview'){const g={};(d.reports||[]).forEach(r=>{const x=g[r.target]=g[r.target]||{id:r.target,nick:nick(r.target),total:0,rs:new Set(),reasons:new Set(),contexts:[],last_at:new Date(r.at).toISOString()};x.total++;x.rs.add(r.reporter);x.reasons.add(r.reason);if(r.ctx)x.contexts.push(r.ctx);});
         return {reports:Object.values(g).map(x=>({...x,reporters:x.rs.size,reasons:[...x.reasons]})),leavers:(d.mockLeavers||[]),bans:(d.mockBans||[]),stats:{players:Object.keys(d.profiles).length,new24:2,matches24:(d.matches||[]).length,teams:Object.keys(d.teams).length}};}
       if(fn==='admin_search')return Object.entries(d.profiles).filter(([,p])=>(p.nick||'').toLowerCase().includes(String(args.p_q).toLowerCase())).map(([id,p])=>({id,nick:p.nick,avatar:p.avatar,rating:((d.ratings||{})[id]||{}).rating,reports:(d.reports||[]).filter(r=>r.target===id).length,leaves:0,banned_until:null}));
@@ -1905,7 +1934,7 @@ async function openAdmin(){
   const act=(id,nick)=>{const w=document.createElement('div');w.className='admact';
     [['1 saat',60],['1 gün',1440],['7 gün',10080],['Kalıcı',5256000]].forEach(([l,m])=>{const b=document.createElement('button');b.className='chip danger';b.textContent='Uzaklaştır: '+l;b.onclick=async()=>{const r=prompt(`${nick} — uzaklaştırma sebebi (oyuncuya gösterilir):`,'Kurallara aykırı davranış');if(r===null)return;try{await DB.adminRpc('admin_ban',{p_user:id,p_minutes:m,p_reason:r});openAdmin();}catch(e){alert(errText(e));}};w.appendChild(b);});
     return w;};
-  await adminUsage(B);await adminBugs(B);
+  adminShop(B);await adminUsage(B);await adminBugs(B);
   H('Şikâyetler (son 14 gün)');
   if(!d.reports.length){const p=document.createElement('p');p.className='note';p.textContent='Şikâyet yok.';B.appendChild(p);}
   d.reports.forEach(r=>{const c=document.createElement('div');c.className='admcard'+(r.reporters>=3?' hot':'');
@@ -2109,6 +2138,22 @@ $('bugSend').onclick=async()=>{const t=cleanStr($('bugText').value,1000).trim();
 $('bugText').addEventListener('keydown',e=>e.stopPropagation());
 
 // ---------- Yönetici: hata bildirimleri ve kullanım istatistikleri ----------
+function adminShop(B){
+  const h=document.createElement('h2');h.textContent='Mağaza kodu';B.appendChild(h);
+  const w=document.createElement('div');w.className='shopgen';B.appendChild(w);
+  w.innerHTML='<p class="note">Ürünü ve süreyi seç, kodu üret, oyuncuya söyle. Oyuncu Profil → Mağaza\'da kodu yazar. Her kod tek kullanımlık; süre dolunca geçersiz olur.</p><div class="row"><select id="sgItem" aria-label="Ürün"></select></div><div class="row" id="sgTtl"></div><button class="big" id="sgGo" type="button">Kod üret</button><div class="sgout" id="sgOut" hidden><b id="sgCode" title="Kopyalamak için dokun"></b><span id="sgLeft"></span></div><div class="sglist" id="sgList"></div>';
+  const sel=w.querySelector('#sgItem');Object.entries(ITEM_TR).forEach(([k,n])=>{const o=document.createElement('option');o.value=k;o.textContent=n;sel.appendChild(o);});
+  let ttl=15;const tr=w.querySelector('#sgTtl');[5,15,30,60].forEach(t=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=t+' sn';b.setAttribute('aria-pressed',String(t===ttl));b.onclick=()=>{ttl=t;[...tr.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));};tr.appendChild(b);});
+  const list=async()=>{const L=w.querySelector('#sgList');try{const r=await DB.adminRpc('admin_shop_codes');L.innerHTML='';if(!r.length)return;const hd=document.createElement('div');hd.className='lbl';hd.textContent='Son kodlar';L.appendChild(hd);
+    r.forEach(x=>{const d=document.createElement('div');d.className='sgrow';const c=document.createElement('code');c.textContent=x.code;const i=document.createElement('span');i.textContent=ITEM_TR[x.item]||x.item;const s2=document.createElement('span');
+      s2.className=x.used_at?'ok':new Date(x.expires_at)<new Date()?'off':'wait';s2.textContent=x.used_at?'✓ '+(x.used_nick||'?')+' · '+fmtDT(x.used_at):new Date(x.expires_at)<new Date()?'Süresi doldu':'Bekliyor';d.append(c,i,s2);L.appendChild(d);});}catch(e){L.textContent=errText(e);}};
+  let tm=null;const go=w.querySelector('#sgGo');
+  go.onclick=async()=>{go.disabled=true;try{const r=await DB.adminRpc('admin_make_code',{p_item:sel.value,p_ttl:ttl});const out=w.querySelector('#sgOut'),cd=w.querySelector('#sgCode'),lf=w.querySelector('#sgLeft');out.hidden=false;out.classList.remove('dead');cd.textContent=r.code;
+      cd.onclick=()=>{try{navigator.clipboard.writeText(r.code);toast('Kod kopyalandı');}catch(e){}};
+      const end=Date.now()+r.ttl*1000;clearInterval(tm);const tick=()=>{const s=Math.ceil((end-Date.now())/1000);if(s<=0){clearInterval(tm);lf.textContent='Süresi doldu';out.classList.add('dead');list();return;}lf.textContent=`${ITEM_TR[r.item]} · ${s} sn kaldı`;};tick();tm=setInterval(tick,250);list();}
+    catch(e){toast(errText(e));}finally{go.disabled=false;}};
+  list();
+}
 async function adminBugs(B){
   const h=document.createElement('h2');h.textContent='Hata bildirimleri';B.appendChild(h);
   const box=document.createElement('div');B.appendChild(box);let status='open';
@@ -2237,7 +2282,7 @@ function renderHostPanel(){
   const cfg=NET.cfg;
   [['hsMap','map',false],['hsTime','time',true],['hsGoals','goals',true],['hsSkin','skin',false]].forEach(([id,k,num])=>{
     $(id).querySelectorAll('.chip').forEach(c=>{c.setAttribute('aria-pressed',String(String(cfg[k])===c.dataset.v));c.disabled=NET.phase!=='lobby';
-      c.onclick=()=>{cfg[k]=num?Number(c.dataset.v):c.dataset.v;pushRoom();pushLobby();renderRoom();};});});
+      c.onclick=()=>{const v=num?Number(c.dataset.v):c.dataset.v;if(k==='skin'&&!skinOk(v)){lockMsg('Bu saha');return;}cfg[k]=v;pushRoom();pushLobby();renderRoom();};if(k==='skin')c.classList.toggle('locked',!skinOk(c.dataset.v));});});
   [0,1].forEach(t=>{const box=$('hsKit'+t);if(!box.childElementCount){KITS.forEach((k,i)=>{const b=document.createElement('button');b.title=k.n;b.setAttribute('aria-label',k.n);const cv=document.createElement('canvas');cv.width=60;cv.height=60;b.appendChild(cv);miniKit(cv,kitOf(i));
       b.onclick=()=>{if(NET.cfg.kits[1-t]===i)NET.cfg.kits[1-t]=NET.cfg.kits[t];NET.cfg.kits[t]=i;pushRoom();renderRoom();};box.appendChild(b);});}
     [...box.children].forEach((b,i)=>b.setAttribute('aria-pressed',String(cfg.kits[t]===i)));});
@@ -2477,8 +2522,8 @@ async function renderMyStats(){const box=$('myStats');if(!box)return;box.innerHT
 function renderProfile(){renderMyStats();renderLooks();renderQuests();
   $('inName').value=prof.name;renderJersey();
   const box=$('nameColors');box.innerHTML='';
-  NAME_COLORS.forEach(col=>{const b=document.createElement('button');b.className='sw';b.style.background=col;b.setAttribute('aria-label',col);b.setAttribute('aria-pressed',String(prof.nameColor===col));
-    b.onclick=()=>{prof.nameColor=col;save();renderProfile();queueSave();};box.appendChild(b);});
+  NAME_COLORS.forEach(col=>{const b=document.createElement('button');const lk=col!=='#ffffff'&&!owns('name_color');b.className='sw'+(lk?' locked':'');b.style.background=col;b.setAttribute('aria-label',col+(lk?' (kilitli)':''));b.setAttribute('aria-pressed',String(prof.nameColor===col));
+    b.onclick=()=>{if(lk){lockMsg('Renkli isim');return;}prof.nameColor=col;save();renderProfile();queueSave();};box.appendChild(b);});
   drawPreview();
   $('acctInfo').textContent=!LIVE?'Yerel deneme modu: veriler sadece bu tarayıcıda.':isAnon?'Misafir hesapla oynuyorsun. Profilin ve takımın bu tarayıcıya bağlı. Google ile bağlarsan her cihazdan girersin.':'Google hesabınla bağlısın'+(userEmail?' ('+userEmail+')':'')+'.';
   $('googleLink').hidden=LIVE&&!isAnon;$('changeNick').hidden=!LIVE||isAnon;
@@ -2506,7 +2551,24 @@ function renderJersey(){
   const sb2=$('buyJersey');if(sb2){sb2.disabled=JCARDS>=5;sb2.textContent=JCARDS>=5?'En fazla 5 kart birikir':'Kart al';}
   const own=$('jerseyOwned');if(own)own.textContent=`Elindeki kart: ${JCARDS}`;
 }
-$('buyJersey').onclick=async()=>{const b=$('buyJersey');b.disabled=true;try{JCARDS=await DB.buyJerseyCard();renderJersey();$('jerseyOwned').textContent=`Kart eklendi. Elindeki kart: ${JCARDS}`;}catch(e){$('jerseyOwned').textContent=/too many/.test(e.message)?'En fazla 5 kart biriktirebilirsin.':errText(e);}finally{b.disabled=JCARDS>=5;}};
+// ---------- Mağaza: ürünler satışta değil, yöneticinin verdiği kısa ömürlü kodla açılır ----------
+const ITEM_TR={name_color:'Renkli isim',jersey_card:'Forma değiştirme kartı',starter:'Başlangıç paketi',skin_night:'Gece Işıkları sahası',skin_beach:'Plaj sahası',skin_snow:'Kar Fırtınası sahası',skin_rain:'Sağanak sahası',skin_drizzle:'Çisenti sahası',skin_sakura:'Kiraz Bahçesi sahası',skins_all:'6 saha birlikte',cel_confetti:'Konfeti sevinci',cel_fireworks:'Havai fişek sevinci',cel_fire:'Ateş izi sevinci',cel_banner:'Altın pankart sevinci',premium:'Premium üyelik (30 gün)',team_premium:'Takım premium'};
+function renderStore(){document.querySelectorAll('.store .item[data-own]').forEach(el=>{const k=el.dataset.own,its=k.split(' ');
+  const n=k==='team_premium'?(myTeamCache&&myTeamCache.team&&myTeamCache.team.premium?1:0):k==='starter'?0:its.filter(owns).length;const all=n>0&&n>=its.length;
+  let st=el.querySelector('.own');if(!st){st=document.createElement('span');el.appendChild(st);}st.className='own'+(all?' yes':n?' part':'');
+  st.textContent=k==='premium'&&OWN.prem?'✓ Sende · '+new Date(OWN.prem).toLocaleDateString('tr-TR',{day:'numeric',month:'long'})+' tarihine kadar':all?'✓ Sende':n?`✓ ${n}/${its.length} sende`:'🔒 Kilitli';});}
+async function loadOwned(){try{const r=await DB.myItems();OWN.items=new Set(Array.isArray(r.items)?r.items:[]);OWN.prem=r.premium_until||null;}catch(e){}
+  const ch=enforceOwned();markLocks();if(ch){try{queueSave();pushTag();}catch(e){}}if(curTab==='profile')renderProfile();}
+$('redeemCode').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
+$('redeemForm').onsubmit=async e=>{e.preventDefault();const inp=$('redeemCode'),msg=$('redeemMsg'),b=e.target.querySelector('button');const c=inp.value.replace(/[^a-z0-9]/gi,'').toUpperCase();
+  if(c.length<6){msg.className='err';msg.textContent='Kodu eksiksiz yaz (6 karakter).';return;}
+  b.disabled=true;msg.className='note';msg.textContent='Kontrol ediliyor…';
+  try{const r=await DB.redeemCode(c);inp.value='';
+    if(r.item==='jersey_card'||r.item==='starter'){const p=await DB.getProfile().catch(()=>null);if(p){JCARDS=Number(p.jersey_cards)||0;renderJersey();}}
+    if(r.item==='team_premium')myTeamCache=await DB.myTeam().catch(()=>myTeamCache);
+    await loadOwned();msg.className='note okmsg';msg.textContent=`✓ ${ITEM_TR[r.item]||'Ürün'} açıldı.`+(r.item==='team_premium'?' Takım sekmesinden formayı düzenleyebilirsin.':r.item==='jersey_card'?' Profilde forma numaranı değiştirebilirsin.':' Profil sekmesinden seçebilirsin.');}
+  catch(err){msg.className='err';msg.textContent=/expired/.test(err.message)?'Bu kodun süresi dolmuş. Yeni kod iste.':/invalid/.test(err.message)?'Kod geçersiz ya da daha önce kullanılmış.':/too many/.test(err.message)?'Çok fazla hatalı deneme. 10 dakika sonra tekrar dene.':/not captain/.test(err.message)?'Takım premium kodunu takım kaptanı kullanmalı.':errText(err);}
+  finally{b.disabled=false;}};
 $('googleLink').onclick=googleSignIn;$('gateGoogle').onclick=googleSignIn;
 $('changeNick').onclick=async()=>{if(LIVE){await sb.auth.signOut();}try{localStorage.removeItem('uzk-profile'+SLOT);}catch(e){}location.reload();};
 
@@ -2514,28 +2576,28 @@ $('changeNick').onclick=async()=>{if(LIVE){await sb.auth.signOut();}try{localSto
 // ---------- Takım sekmesi ----------
 // =====================================================================
 let myTeamCache=null;
-function kitPicker(cur,onPick){
+function kitPicker(cur,onPick,allowPat=true){
   const wrap=document.createElement('div');wrap.style.display='flex';wrap.style.flexDirection='column';wrap.style.gap='8px';
-  const k={...cur};
+  const k={...cur};if(!allowPat)k.pat='solid';
   const prev=document.createElement('canvas');prev.width=120;prev.height=120;prev.style.cssText='width:60px;height:60px';
   const redraw=()=>{const x=prev.getContext('2d');x.clearRect(0,0,120,120);drawDisc(x,60,60,54,k,'10');};
   const row=(label,list,key)=>{const l=document.createElement('div');l.className='lbl';l.textContent=label;const r=document.createElement('div');r.className='row';
     list.forEach(col=>{const b=document.createElement('button');b.type='button';b.className='sw';b.style.background=col;b.setAttribute('aria-label',col);b.setAttribute('aria-pressed',String(k[key]===col));
       b.onclick=()=>{k[key]=col;[...r.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));redraw();onPick({...k});};r.appendChild(b);});wrap.append(l,r);};
   wrap.appendChild(prev);row('Ana renk',COLORS,'p');row('İkinci renk',COLORS,'s');
-  const l=document.createElement('div');l.className='lbl';l.innerHTML='Desen <span class="pro">Premium</span>';const r=document.createElement('div');r.className='row';
-  PATTERNS.forEach(([v,lab])=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=lab;b.setAttribute('aria-pressed',String(k.pat===v));b.onclick=()=>{k.pat=v;[...r.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));redraw();onPick({...k});};r.appendChild(b);});
+  const l=document.createElement('div');l.className='lbl';l.innerHTML='Desen <span class="pro">Takım premium</span>';const r=document.createElement('div');r.className='row';
+  PATTERNS.forEach(([v,lab])=>{const b=document.createElement('button');b.type='button';const lk=!allowPat&&v!=='solid';b.className='chip'+(lk?' locked':'');b.textContent=lab;b.setAttribute('aria-pressed',String(k.pat===v));b.onclick=()=>{if(lk){lockMsg('Desenli forma');return;}k.pat=v;[...r.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));redraw();onPick({...k});};r.appendChild(b);});
   wrap.append(l,r);redraw();onPick({...k});return wrap;
 }
 async function renderTeam(){
   const P=$('tab-team');P.innerHTML='<div class="panel"><p class="note">Yükleniyor…</p></div>';
   let mt;try{mt=await DB.myTeam();}catch(e){P.innerHTML='';const d=document.createElement('div');d.className='panel';d.innerHTML='<h2>Takım</h2><p class="err"></p>';d.querySelector('.err').textContent='Takım bilgisi alınamadı: '+errText(e);P.appendChild(d);return;}
-  myTeamCache=mt;renderMe();P.innerHTML='';
+  myTeamCache=mt;renderMe();renderStore();P.innerHTML='';
   if(!mt){
     const grid=document.createElement('div');grid.className='cols2';
     const a=document.createElement('form');a.className='panel';
     a.innerHTML='<h2>Takım kur</h2><div class="row"><div class="field"><label class="lbl" for="tName">Takım adı</label><input id="tName" type="text" maxlength="24" required minlength="2"></div><div class="field" style="flex:0 1 110px"><label class="lbl" for="tAbbr">Kısaltma</label><input id="tAbbr" type="text" maxlength="3" minlength="2" required></div></div><div id="tKit"></div><button class="big" type="submit">Takımı kur</button><p class="err" id="tErr"></p><p class="note">Takımın 6. Lig\'den başlar. Kaptan sensin; arkadaşlarını takım koduyla davet edersin.</p>';
-    let kit={p:prof.p,s:prof.s,pat:'solid'};a.querySelector('#tKit').appendChild(kitPicker(kit,k=>kit=k));
+    let kit={p:prof.p,s:prof.s,pat:'solid'};a.querySelector('#tKit').appendChild(kitPicker(kit,k=>kit=k,false));
     a.querySelector('#tAbbr').addEventListener('input',e=>{e.target.value=e.target.value.toLocaleUpperCase('tr-TR');});
     a.onsubmit=async e=>{e.preventDefault();const name=cleanStr(a.querySelector('#tName').value,24).trim(),abbr=cleanStr(a.querySelector('#tAbbr').value,3).trim().toLocaleUpperCase('tr-TR');
       if(name.length<2||abbr.length<2){a.querySelector('#tErr').textContent='Takım adı ve kısaltma en az 2 karakter olmalı.';return;}
@@ -2558,7 +2620,7 @@ async function renderTeam(){
   const grid=document.createElement('div');grid.className='cols2';P.appendChild(grid);
   const ros=document.createElement('div');ros.className='panel';ros.innerHTML='<h2>Kadro <span class="tag cnt"></span></h2><div class="roster"></div>';grid.appendChild(ros);
   const side=document.createElement('div');side.className='panel';grid.appendChild(side);
-  try{const ms=await DB.members(t.id);ros.querySelector('.cnt').textContent=ms.length+'/12';const R=ros.querySelector('.roster');
+  try{const ms=await DB.members(t.id);ros.querySelector('.cnt').textContent=ms.length+'/'+(t.premium?16:12);const R=ros.querySelector('.roster');
     ms.forEach(m=>{const r=document.createElement('div');r.className='r';const av=document.createElement('span');av.className='av';av.style.cssText=`width:24px;height:24px;border-radius:50%;border:2px solid #000;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:12px;background:${kit.p};color:${lum(kit.p)>0.6?'#111':'#fff'}`;av.textContent=cleanStr(m.avatar,2)||'?';
       const nm=document.createElement('span');nm.className='nm';nm.textContent=cleanStr(m.nick,14)+(m.user_id===uid?' (sen)':'');nm.style.color=cleanCol(m.name_color);
       const ro=document.createElement('span');ro.className='role';ro.textContent=m.role;r.append(av,nm,ro);
@@ -2567,7 +2629,7 @@ async function renderTeam(){
   if(cap){side.innerHTML='<h2>Davet</h2><p class="note">Bu kodu takım arkadaşlarına gönder. Takım sekmesinde "Takıma katıl"a yazsınlar.</p><div class="row" style="align-items:center"><span class="codebox" id="tcode">…</span><button class="chip" id="tcopy">Kopyala</button></div><h2 style="margin-top:8px">Takım forması</h2><div id="tkit"></div><button class="chip" id="tkitSave">Formayı kaydet</button><p class="note" id="tkitMsg"></p>';
     DB.teamCode(t.id).then(c=>{side.querySelector('#tcode').textContent=c||'—';}).catch(()=>{side.querySelector('#tcode').textContent='alınamadı';});
     side.querySelector('#tcopy').onclick=()=>{const c=side.querySelector('#tcode').textContent;try{navigator.clipboard.writeText(c);side.querySelector('#tcopy').textContent='Kopyalandı';}catch(e){}};
-    let nk={...cleanKit(t.kit||kit)};side.querySelector('#tkit').appendChild(kitPicker(nk,k=>nk={...k,badge:nk.badge}));side.querySelector('#tkit').appendChild(badgePicker(nk,k=>nk={...nk,badge:k.badge}));
+    let nk={...cleanKit(t.kit||kit)};side.querySelector('#tkit').appendChild(kitPicker(nk,k=>nk={...k,badge:nk.badge},!!t.premium));if(t.premium)side.querySelector('#tkit').appendChild(badgePicker(nk,k=>nk={...nk,badge:k.badge}));else{const n=document.createElement('p');n.className='note';n.textContent='🔒 Desenli forma, takım arması ve 16 kişilik kadro takım premium ile açılır. Kodu mağazadan kaptan kullanır.';side.querySelector('#tkit').appendChild(n);}
     side.querySelector('#tkitSave').onclick=async()=>{try{await DB.updateKit(t.id,cleanKit(nk));side.querySelector('#tkitMsg').textContent='Forma kaydedildi.';myTeamCache.team.kit=cleanKit(nk);renderMe();}catch(e){side.querySelector('#tkitMsg').textContent=errText(e);}};
   } else side.innerHTML='<h2>Takım</h2><p class="note">Formayı ve kadroyu kaptan yönetir. Lig maçları için kaptanınla haberleş.</p>';
   const lv=document.createElement('button');lv.className='ghost';lv.style.justifyContent='center';lv.textContent=cap?'Takımdan ayrıl (kaptanlık en eski oyuncuya geçer)':'Takımdan ayrıl';
@@ -2713,6 +2775,7 @@ function enterMain(){
   chk();setInterval(chk,120000);loadExtra();DB.pingActive().catch(()=>{});setInterval(()=>DB.pingActive().catch(()=>{}),10*60e3);
   loadFriends(true);setInterval(()=>loadFriends(),60000);
   DB.questStatus().then(q=>{QSTARS=Number(q.stars)||0;if(prof.trail&&LOCKS.trail[prof.trail]>QSTARS)prof.trail='none';if(prof.ball&&LOCKS.ball[prof.ball]>QSTARS)prof.ball='classic';}).catch(()=>{});
+  enforceOwned();markLocks();loadOwned();setInterval(loadOwned,10*60e3);
   setTimeout(checkAdminRoute,300);DB.adminRpc('is_admin').then(v=>{IS_ADMIN=!!v;const b=$('adminBtn');if(b)b.hidden=!IS_ADMIN;}).catch(()=>{});
   DB.claimRewards().then(r=>{MYREW=Array.isArray(r)?r.filter(x=>cleanTier(x.tier)):[];pushLobby();if(NET.room)pushRoom();}).catch(()=>{});
   DB.myRating().then(r=>{MYR={r:Number(r.rating)||1000,g:Number(r.games)||0};renderMe();pushLobby();}).catch(()=>{});

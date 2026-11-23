@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Zkpball">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800&family=Inter:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=6bbbfe2">
+<link rel="stylesheet" href="style.css?v=6c0fbfc">
 </head>
 <body>
 
@@ -178,17 +178,19 @@
       </div>
       <div class="panel">
         <h2>Mağaza <span class="pro">Premium</span></h2>
-        <p class="note">Test sürümü: aşağıdakilerin hepsi şu an herkese ücretsiz açık.</p>
+        <p class="note" id="storeNote">Ürünler şu an satışta değil. Sana verilen kodla açabilirsin.</p>
+        <form class="redeem" id="redeemForm" autocomplete="off"><input type="text" id="redeemCode" maxlength="8" placeholder="Kodu yaz" autocapitalize="characters" spellcheck="false" aria-label="Mağaza kodu"><button class="chip go" type="submit">Kodu kullan</button></form>
+        <p class="note" id="redeemMsg" role="status"></p>
         <button class="ghost" id="adReward" hidden style="justify-content:center">Reklam izle, premium forma desenini 1 gün dene</button>
         <div class="store">
-          <div class="item"><b>Renkli isim</b>Sahada ve sohbette renkli takma ad. Kalıcı.<span class="price">14,90 TL</span></div>
-          <div class="item" id="storeJersey"><b>Forma değiştirme kartı</b>Forma numaranı bir kez değiştirir. Her yeni hesaba 1 kart hediye.<span class="price">9,90 TL</span><button class="chip go" id="buyJersey" type="button">Kart al</button><small class="note" id="jerseyOwned"></small></div>
-          <div class="item"><b>Başlangıç paketi</b>Renkli isim + 2 forma değiştirme kartı birlikte.<span class="price">24,90 TL</span></div>
-          <div class="item"><img class="itimg" src="assets/skin-pack.webp" alt="Gece, kar ve plaj sahaları"><b>Saha görünümleri</b>Gece Işıkları ve Plaj. Oda sahibi seçer, odadaki herkes o sahada oynar.<span class="price">19,90 TL her biri</span></div>
-          <div class="item"><img class="itimg" src="assets/skin-rain.webp" alt="Yağmurlu gece sahası"><b>Efektli sahalar</b>Kar Fırtınası: yağan kar, karlı kenarlar. Sağanak: bardaktan boşanan yağmur, arada şimşek ve gök gürültüsü. Çisenti: aynı ıslak gece, ince ince çiseleyen yağmur. Kiraz Bahçesi: rüzgârla savrulan kiraz yaprakları.<span class="price">34,90 TL her biri · 6 saha birlikte 99,90 TL</span></div>
-          <div class="item"><b>Gol sevinçleri</b>Konfeti, havai fişek, ateş izi ve altın pankart. Gol atınca sahada oynar, odadaki herkes görür. Her biri kalıcı.<span class="price">9,90 TL her biri</span></div>
-          <div class="item"><b>Premium üyelik</b>Bütün kozmetikler + her ay yeni özel forma deseni.<span class="price">29,90 TL / ay</span></div>
-          <div class="item"><b>Takım premium</b>Desenli forma, takım logosu, 16 kişilik kadro. Kaptan alır, tüm takım kullanır.<span class="price">49,90 TL</span></div>
+          <div class="item" data-own="name_color"><b>Renkli isim</b>Sahada ve sohbette renkli takma ad. Kalıcı.<span class="price">14,90 TL</span></div>
+          <div class="item" id="storeJersey"><b>Forma değiştirme kartı</b>Forma numaranı bir kez değiştirir. Her yeni hesaba 1 kart hediye.<span class="price">9,90 TL</span><small class="note" id="jerseyOwned"></small></div>
+          <div class="item" data-own="starter"><b>Başlangıç paketi</b>Renkli isim + 2 forma değiştirme kartı birlikte.<span class="price">24,90 TL</span></div>
+          <div class="item" data-own="skin_night skin_beach"><img class="itimg" src="assets/skin-pack.webp" alt="Gece, kar ve plaj sahaları"><b>Saha görünümleri</b>Gece Işıkları ve Plaj. Oda sahibi seçer, odadaki herkes o sahada oynar.<span class="price">19,90 TL her biri</span></div>
+          <div class="item" data-own="skin_snow skin_rain skin_drizzle skin_sakura"><img class="itimg" src="assets/skin-rain.webp" alt="Yağmurlu gece sahası"><b>Efektli sahalar</b>Kar Fırtınası: yağan kar, karlı kenarlar. Sağanak: bardaktan boşanan yağmur, arada şimşek ve gök gürültüsü. Çisenti: aynı ıslak gece, ince ince çiseleyen yağmur. Kiraz Bahçesi: rüzgârla savrulan kiraz yaprakları.<span class="price">34,90 TL her biri · 6 saha birlikte 99,90 TL</span></div>
+          <div class="item" data-own="cel_confetti cel_fireworks cel_fire cel_banner"><b>Gol sevinçleri</b>Konfeti, havai fişek, ateş izi ve altın pankart. Gol atınca sahada oynar, odadaki herkes görür. Her biri kalıcı.<span class="price">9,90 TL her biri</span></div>
+          <div class="item" data-own="premium"><b>Premium üyelik</b>Bütün kozmetikler + her ay yeni özel forma deseni.<span class="price">29,90 TL / ay</span></div>
+          <div class="item" data-own="team_premium"><b>Takım premium</b>Desenli forma, takım logosu, 16 kişilik kadro. Kaptan alır, tüm takım kullanır.<span class="price">49,90 TL</span></div>
         </div>
       </div>
     </div>
@@ -318,7 +320,7 @@
 </div></div>
 <div class="overlay statov" id="statOv" hidden><div class="panel" id="statBody"></div></div>
 
-<script type="module" src="app.js?v=6bbbfe2"></script>
+<script type="module" src="app.js?v=6c0fbfc"></script>
 <div class="invtoast" id="invToast" hidden></div>
 <div class="afktoast" id="afkToast" hidden></div>
 <div class="overlay adminov" id="adminOv" hidden><div class="panel adminpanel"><div class="row" style="justify-content:space-between;align-items:center"><b class="admtitle">Yönetici paneli</b><button class="chip" id="adminClose">Kapat</button></div><div id="adminBody"></div></div></div>
