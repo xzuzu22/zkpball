@@ -1350,7 +1350,11 @@ const makeRoom=name=>LIVE?makeRoomSB(name):makeRoomBC(name);
 // =====================================================================
 // ---------- Oyuncudan oyuncuya bağlantı (WebRTC), yedek: kanal yayını ----------
 // =====================================================================
-const ICE=[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun.cloudflare.com:3478']}];
+const STUN=[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun.cloudflare.com:3478']}];
+let ICE=STUN,iceAt=0;
+// TURN: oyuncular aynı ağı/NAT'ı aşamadığında Cloudflare TURN üzerinden bağlanır; yoksa yalnız STUN ile devam
+async function loadIce(){if(!LIVE)return;try{const r=await fetch(CFG.supabaseUrl+'/functions/v1/turn-ice',{method:'POST',headers:{apikey:CFG.supabaseAnonKey,Authorization:'Bearer '+CFG.supabaseAnonKey}});const j=await r.json();if(j&&j.ok&&Array.isArray(j.iceServers)&&j.iceServers.length){ICE=STUN.concat(j.iceServers);iceAt=Date.now();setTimeout(loadIce,3*3600e3);return;}}catch(e){}setTimeout(loadIce,10*60e3);}
+loadIce();
 const RTC={pcs:new Map(),dcs:new Map(),pend:new Map()};
 function rtcReset(){for(const pc of RTC.pcs.values()){try{pc.close();}catch(e){}}RTC.pcs.clear();RTC.dcs.clear();RTC.pend.clear();}
 function rtcDrop(peer){const pc=RTC.pcs.get(peer);if(pc){try{pc.close();}catch(e){}}RTC.pcs.delete(peer);RTC.dcs.delete(peer);RTC.pend.delete(peer);}
