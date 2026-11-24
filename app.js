@@ -373,12 +373,23 @@ kb.addEventListener('pointerdown',e=>{e.preventDefault();audio();kickTouch=true;
 const kup=()=>{kickTouch=false;kb.classList.remove('down');};
 kb.addEventListener('pointerup',kup);kb.addEventListener('pointercancel',kup);
 
+// Oyun kolu (PlayStation, Xbox vb.): sol çubuk/yön tuşları hareket, X-Kare-Daire-Üçgen ve omuz tuşları şut, Options duraklat
+const PAD_KICK=[0,1,2,3,4,5,6,7];
+function padState(){let gp=null;try{for(const g of navigator.getGamepads?navigator.getGamepads():[])if(g&&g.connected){gp=g;break;}}catch(e){}
+  if(!gp)return null;const B=i=>!!(gp.buttons[i]&&(gp.buttons[i].pressed||gp.buttons[i].value>0.5));
+  let x=gp.axes[0]||0,y=gp.axes[1]||0;const m=Math.hypot(x,y);if(m<0.22){x=0;y=0;}else{const k=Math.min(1,(m-0.22)/0.7)/m;x*=k;y*=k;}
+  if(B(14))x=-1;if(B(15))x=1;if(B(12))y=-1;if(B(13))y=1;
+  return {x,y,kick:PAD_KICK.some(B),opt:B(9)};}
+addEventListener('gamepadconnected',e=>{try{toast('🎮 Oyun kolu bağlandı: sol çubukla koş, X ile şut at');}catch(_){}});
+addEventListener('gamepaddisconnected',()=>{try{toast('Oyun kolu ayrıldı');}catch(_){}});
+{let lastOpt=false;setInterval(()=>{const s=padState();const o=!!(s&&s.opt);if(o&&!lastOpt&&G&&!$('game').hidden)togglePause();lastOpt=o;},60);}
 function humanInput(p){
   let x=0,y=0;
   if(keys.ArrowLeft||keys.KeyA)x-=1;if(keys.ArrowRight||keys.KeyD)x+=1;if(keys.ArrowUp||keys.KeyW)y-=1;if(keys.ArrowDown||keys.KeyS)y+=1;
   if(joy.id!==null){const m=Math.hypot(joy.x,joy.y);if(m>0.18){x=joy.x;y=joy.y;}}
+  const pad=padState();if(pad&&(pad.x||pad.y)){x=pad.x;y=pad.y;}
   const m=Math.hypot(x,y);if(m>1){x/=m;y/=m;}
-  p.ix=x;p.iy=y;p.kick=!!(KICK_KEYS.some(k=>keys[k])||mouseKick||kickTouch);
+  p.ix=x;p.iy=y;p.kick=!!(KICK_KEYS.some(k=>keys[k])||mouseKick||kickTouch||(pad&&pad.kick));
 }
 
 // ---------- Yapay zekâ ----------
