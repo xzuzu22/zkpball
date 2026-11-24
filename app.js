@@ -2420,8 +2420,9 @@ function clientFrame(){
   if(g&&g!==NET.lastSnap){
     if(NET.lastSnap)anomCheck(NET.lastSnap,g);
     NET.lastSnap=g;
-    G.players.forEach((p,i)=>{const x=g.s[3*i],y=g.s[3*i+1];if(typeof x==='number'&&typeof y==='number'){p.tx=x;p.ty=y;p.kick=!!g.s[3*i+2];}});
-    if(Array.isArray(g.b)){G.ball.tx=g.b[0];G.ball.ty=g.b[1];}
+    const V=(a,i)=>Array.isArray(a)&&Array.isArray(a[i])?[Number(a[i][0])/100||0,Number(a[i][1])/100||0]:[0,0];
+    G.players.forEach((p,i)=>{const x=g.s[3*i],y=g.s[3*i+1];if(typeof x==='number'&&typeof y==='number'){p.tx=x;p.ty=y;[p.tvx,p.tvy]=V(g.v,i);p.kick=!!g.s[3*i+2];}});
+    if(Array.isArray(g.b)){G.ball.tx=g.b[0];G.ball.ty=g.b[1];const bv=Array.isArray(g.bv)?g.bv:[0,0];G.ball.tvx=Number(bv[0])/100||0;G.ball.tvy=Number(bv[1])/100||0;}
     if(Array.isArray(g.sc))G.score=[Number(g.sc[0])||0,Number(g.sc[1])||0];
     G.clock=Number(g.c)||0;G.golden=!!g.gd;G.paused=!!g.pa;G.lk=Number.isInteger(g.lk)?g.lk:-1;
     if(Array.isArray(g.pg))G.players.forEach((p,i)=>{const v=g.pg[i];if(Array.isArray(v)){p.g=Math.max(0,Number(v[0])||0);p.a=Math.max(0,Number(v[1])||0);}});
@@ -2432,8 +2433,13 @@ function clientFrame(){
     if(g.st==='over'&&!G.ended){G.ended=true;G.state='over';showEnd();}
     renderHud();
   }
-  const k=G.snap?1:0.5;G.snap=false;
-  for(const o of [...G.players,G.ball]){if(Math.hypot(o.tx-o.x,o.ty-o.y)>70){o.x=o.tx;o.y=o.ty;}else{o.x+=(o.tx-o.x)*k;o.y+=(o.ty-o.y)*k;}}
+  // Akıcı görüntü: son anlık görüntüyü hızlarla ileri tahmin et (paketler düzensiz gelse de hareket kesilmesin),
+  // sonra ekran yenileme hızından bağımsız yumuşatarak oraya yaklaş. 144 Hz ekranlarda da aynı akıcılık.
+  const now=performance.now(),dt=Math.min(0.1,Math.max(0.001,(now-(NET.cfAt||now))/1000))||1/60;NET.cfAt=now;
+  const live=g&&g.st==='play'&&!g.pa&&!g.ko;const ahead=live?Math.min(6,Math.max(0,(now-(g._rt||now))/16.67)):0;
+  const k=G.snap?1:1-Math.exp(-dt*22);G.snap=false;
+  for(const o of [...G.players,G.ball]){const px=o.tx+(o.tvx||0)*ahead,py=o.ty+(o.tvy||0)*ahead;
+    if(Math.hypot(px-o.x,py-o.y)>70){o.x=px;o.y=py;}else{o.x+=(px-o.x)*k;o.y+=(py-o.y)*k;}}
   const me=G.players.find(p=>p.local);
   if(me&&!chatOpen()){const t={};humanInput(t);const q=[Math.round(t.ix*10),Math.round(t.iy*10),t.kick?1:0];const s=q.join(',');const now=performance.now();
     if(s!==NET.lastIn||now-NET.lastInAt>120){NET.lastIn=s;NET.lastInAt=now;
