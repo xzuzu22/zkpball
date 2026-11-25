@@ -2562,7 +2562,7 @@ function drawPreview(){
   const k=myTeamCache&&myTeamCache.team?cleanKit(myTeamCache.team.kit):userKit();
   drawDisc(x,150,128,80,k,prof.avatar,{name:prof.name,nameColor:prof.nameColor});
 }
-$('inName').addEventListener('input',e=>{const v=cleanStr(e.target.value,14).trim();if(hasBad(v)){$('saveState').textContent='Bu ad uygun değil.';return;}prof.name=v||'Oyuncu';save();drawPreview();queueSave();});
+$('inName').addEventListener('input',async e=>{const v=cleanStr(e.target.value,14).trim();if(hasBad(v)){$('saveState').textContent='Bu ad uygun değil.';return;}if(!(await nickAllowed(v))){$('saveState').textContent='Bu ad ayrılmış, başka bir ad seç.';return;}prof.name=v||'Oyuncu';save();drawPreview();queueSave();});
 let JCARDS=1;
 function renderJersey(){
   const box=$('jerseyBox');if(!box)return;box.innerHTML='';
@@ -2611,7 +2611,7 @@ $('acctReg').onclick=()=>openAcct('reg');$('acctLogin').onclick=()=>{show('gate'
 $('acctForm').onsubmit=async e=>{e.preventDefault();const msg=$('afMsg'),b=$('afGo');
   if(AFMODE==='pass'){const pw=$('afPass').value;if(pw.length<6){msg.textContent='Şifre en az 6 karakter olmalı.';return;}b.disabled=true;
     const {error}=await sb.auth.updateUser({password:pw});b.disabled=false;if(error){msg.textContent=authErr(error);return;}$('afPass').value='';$('acctForm').hidden=true;renderProfile();toast('Şifren değişti');return;}
-  const c=credsFrom($('afUser'),$('afPass'),msg);if(!c)return;b.disabled=true;msg.textContent='Kaydediliyor…';
+  const c=credsFrom($('afUser'),$('afPass'),msg);if(!c)return;if(!(await nickAllowed(c.u))){msg.textContent='Bu kullanıcı adı alınmış, başka bir tane dene.';return;}b.disabled=true;msg.textContent='Kaydediliyor…';
   try{await setCreds(c);$('afPass').value='';$('acctForm').hidden=true;renderProfile();toast('Hesabın oluştu: '+c.u);}catch(err){msg.textContent=authErr(err);}finally{b.disabled=false;}};
 $('googleLink').onclick=googleSignIn;$('gateGoogle').onclick=googleSignIn;
 $('changeNick').onclick=async()=>{if(LIVE){await sb.auth.signOut();}try{localStorage.removeItem('uzk-profile'+SLOT);}catch(e){}location.reload();};
@@ -2808,10 +2808,13 @@ async function renderLeague(){
 // =====================================================================
 // ---------- Kullanıcı adı + şifre ile üyelik (e-posta gerekmez) ----------
 const USER_DOM='@u.zkpball.com';
+// Ayrılmış adlar (sunucu da korur; burada sadece anında uyarı için)
+const RESV=['zuzu'];const normNm=t=>String(t||'').toLowerCase().replace(/ı/g,'i').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ö/g,'o').replace(/ç/g,'c').replace(/ğ/g,'g').replace(/[âîû]/g,m=>({â:'a',î:'i',û:'u'})[m]).replace(/[^a-z0-9]/g,'');
+const NAMEOK={};async function nickAllowed(n){const k=normNm(n);if(!RESV.includes(k)||!LIVE)return true;if(k in NAMEOK)return NAMEOK[k];try{const {data,error}=await sb.rpc('name_free',{p_nick:n});if(error)return true;return NAMEOK[k]=data!==false;}catch(e){return true;}}
 const userOk=u=>/^[a-z0-9_.]{3,16}$/.test(u)&&!/^[._]|[._]$|\.\./.test(u);
 const normUser=v=>String(v||'').trim().toLowerCase().replace(/ı/g,'i').replace(/[ğ]/g,'g').replace(/[ü]/g,'u').replace(/[ş]/g,'s').replace(/[ö]/g,'o').replace(/[ç]/g,'c');
 const isUserAcct=()=>!!userEmail&&userEmail.endsWith(USER_DOM);
-const authErr=e=>{const m=String(e&&e.message||e);return /already|registered|exists/i.test(m)?'Bu kullanıcı adı alınmış, başka bir tane dene.':/Invalid login|credentials/i.test(m)?'Kullanıcı adı ya da şifre yanlış.':/rate|too many/i.test(m)?'Çok fazla deneme yaptın, biraz bekle.':/at least|weak|short/i.test(m)?'Şifre en az 6 karakter olmalı.':'Olmadı: '+m;};
+const authErr=e=>{const m=String(e&&e.message||e);return /already|registered|exists|reserved|Database error|Error updating/i.test(m)?'Bu kullanıcı adı alınmış, başka bir tane dene.':/Invalid login|credentials/i.test(m)?'Kullanıcı adı ya da şifre yanlış.':/rate|too many/i.test(m)?'Çok fazla deneme yaptın, biraz bekle.':/at least|weak|short/i.test(m)?'Şifre en az 6 karakter olmalı.':'Olmadı: '+m;};
 function credsFrom(uEl,pEl,msgEl){const u=normUser(uEl.value);uEl.value=u;const pw=pEl.value;
   if(!userOk(u)){msgEl.textContent='Kullanıcı adı 3–16 karakter olmalı: harf, rakam, _ ve . kullanabilirsin.';return null;}
   if(pw.length<6){msgEl.textContent='Şifre en az 6 karakter olmalı.';return null;}return {u,pw};}
@@ -2831,11 +2834,13 @@ $('gateForm').addEventListener('submit',async e=>{e.preventDefault();
       if(error){$('gateGo').disabled=false;$('gateMsg').textContent=authErr(error);return;}
       try{localStorage.removeItem('uzk-profile'+SLOT);}catch(_){}location.reload();return;}
     const n0=cleanStr($('gNick').value,14).trim();if(n0.length<2||hasBad(n0)||!/^[1-9][0-9]?$/.test(String($('gNum').value||'').trim())){$('gateMsg').textContent='Önce takma adını ve forma numaranı seç.';return;}
+    if(!(await nickAllowed(c.u))){$('gateMsg').textContent='Bu kullanıcı adı alınmış, başka bir tane dene.';return;}if(!(await nickAllowed(n0))){$('gateMsg').textContent='Bu takma ad ayrılmış, başka bir ad seç.';return;}
     $('gateGo').disabled=true;$('gateMsg').textContent='Hesap oluşturuluyor…';
     try{await setCreds(c);}catch(err){$('gateGo').disabled=false;$('gateMsg').textContent=authErr(err);return;}
     $('gateGo').disabled=false;}
   const n=cleanStr($('gNick').value,14).trim();if(n.length<2){$('gateMsg').textContent='Takma ad en az 2 karakter olmalı.';return;}
   if(hasBad(n)){$('gateMsg').textContent='Bu takma ad uygun değil, başka bir ad seç.';return;}
+  if(!(await nickAllowed(n))){$('gateMsg').textContent='Bu takma ad ayrılmış, başka bir ad seç.';return;}
   const jn=String($('gNum').value||'').trim();if(!/^[1-9][0-9]?$/.test(jn)){$('gateMsg').textContent='Forma numaranı seç (1–99).';return;}
   prof.avatar=jn;
   prof.name=n;save();DB.saveProfile().catch(()=>{});enterMain();});
