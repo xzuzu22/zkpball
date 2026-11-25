@@ -2554,8 +2554,8 @@ function renderProfile(){renderMyStats();renderLooks();renderQuests();
   NAME_COLORS.forEach(col=>{const b=document.createElement('button');const lk=col!=='#ffffff'&&!owns('name_color');b.className='sw'+(lk?' locked':'');b.style.background=col;b.setAttribute('aria-label',col+(lk?' (kilitli)':''));b.setAttribute('aria-pressed',String(prof.nameColor===col));
     b.onclick=()=>{if(lk){lockMsg('Renkli isim');return;}prof.nameColor=col;save();renderProfile();queueSave();};box.appendChild(b);});
   drawPreview();
-  $('acctInfo').textContent=!LIVE?'Yerel deneme modu: veriler sadece bu tarayıcıda.':isAnon?'Misafir hesapla oynuyorsun. Profilin ve takımın bu tarayıcıya bağlı. Google ile bağlarsan her cihazdan girersin.':'Google hesabınla bağlısın'+(userEmail?' ('+userEmail+')':'')+'.';
-  $('googleLink').hidden=LIVE&&!isAnon;$('changeNick').hidden=!LIVE||isAnon;
+  $('acctInfo').textContent=!LIVE?'Yerel deneme modu: veriler sadece bu tarayıcıda.':isAnon?'Misafir hesapla oynuyorsun. Profilin ve takımın bu tarayıcıya bağlı. Kullanıcı adı ve şifre belirlersen ya da Google ile bağlarsan her cihazdan girersin.':isUserAcct()?`Kullanıcı adınla bağlısın: ${userEmail.slice(0,-USER_DOM.length)}. Başka cihazda giriş ekranındaki "Giriş yap" ile girebilirsin.`:'Google hesabınla bağlısın'+(userEmail?' ('+userEmail+')':'')+'.';
+  $('googleLink').hidden=LIVE&&!isAnon;$('changeNick').hidden=!LIVE||isAnon;$('acctReg').hidden=!LIVE||!isAnon||!$('acctForm').hidden;$('acctLogin').hidden=!LIVE||!isAnon;$('acctPass').hidden=!LIVE||!isUserAcct()||!$('acctForm').hidden;
 }
 function drawPreview(){
   const c=$('prevCv'),x=c.getContext('2d');x.clearRect(0,0,300,300);
@@ -2605,6 +2605,14 @@ $('redeemForm').onsubmit=async e=>{e.preventDefault();const inp=$('redeemCode'),
     await loadOwned();msg.className='note okmsg';msg.textContent=`✓ ${ITEM_TR[r.item]||'Ürün'} açıldı.`+(r.item==='team_premium'?' Takım sekmesinden formayı düzenleyebilirsin.':r.item==='jersey_card'?' Profilde forma numaranı değiştirebilirsin.':' Profil sekmesinden seçebilirsin.');}
   catch(err){msg.className='err';msg.textContent=/expired/.test(err.message)?'Bu kodun süresi dolmuş. Yeni kod iste.':/invalid/.test(err.message)?'Kod geçersiz ya da daha önce kullanılmış.':/too many/.test(err.message)?'Çok fazla hatalı deneme. 10 dakika sonra tekrar dene.':/not captain/.test(err.message)?'Takım premium kodunu takım kaptanı kullanmalı.':errText(err);}
   finally{b.disabled=false;}};
+let AFMODE='reg';
+const openAcct=m=>{AFMODE=m;$('acctForm').hidden=false;$('afUserF').hidden=m==='pass';$('afMsg').textContent=m==='reg'?'Profilin, takımın ve puanın bu hesaba bağlanır. E-posta gerekmez; şifreni unutma, sıfırlanamaz.':'Yeni şifreni yaz.';$('afGo').textContent=m==='reg'?'Hesabı oluştur':'Şifreyi değiştir';$('acctReg').hidden=$('acctPass').hidden=true;$(m==='reg'?'afUser':'afPass').focus();};
+$('acctReg').onclick=()=>openAcct('reg');$('acctLogin').onclick=()=>{show('gate');$('gateForm').hidden=false;$('gateMode').querySelector('[data-m=login]').click();$('gateMsg').textContent='Hesabınla girersen bu cihazdaki misafir ilerlemen o hesaba taşınmaz. Önce misafir hesabını korumak istersen Profil → "Kullanıcı adı ve şifre belirle".';$('gUser').focus();};$('acctPass').onclick=()=>openAcct('pass');
+$('acctForm').onsubmit=async e=>{e.preventDefault();const msg=$('afMsg'),b=$('afGo');
+  if(AFMODE==='pass'){const pw=$('afPass').value;if(pw.length<6){msg.textContent='Şifre en az 6 karakter olmalı.';return;}b.disabled=true;
+    const {error}=await sb.auth.updateUser({password:pw});b.disabled=false;if(error){msg.textContent=authErr(error);return;}$('afPass').value='';$('acctForm').hidden=true;renderProfile();toast('Şifren değişti');return;}
+  const c=credsFrom($('afUser'),$('afPass'),msg);if(!c)return;b.disabled=true;msg.textContent='Kaydediliyor…';
+  try{await setCreds(c);$('afPass').value='';$('acctForm').hidden=true;renderProfile();toast('Hesabın oluştu: '+c.u);}catch(err){msg.textContent=authErr(err);}finally{b.disabled=false;}};
 $('googleLink').onclick=googleSignIn;$('gateGoogle').onclick=googleSignIn;
 $('changeNick').onclick=async()=>{if(LIVE){await sb.auth.signOut();}try{localStorage.removeItem('uzk-profile'+SLOT);}catch(e){}location.reload();};
 
@@ -2798,7 +2806,34 @@ async function renderLeague(){
 // =====================================================================
 // ---------- Açılış ----------
 // =====================================================================
+// ---------- Kullanıcı adı + şifre ile üyelik (e-posta gerekmez) ----------
+const USER_DOM='@u.zkpball.com';
+const userOk=u=>/^[a-z0-9_.]{3,16}$/.test(u)&&!/^[._]|[._]$|\.\./.test(u);
+const normUser=v=>String(v||'').trim().toLowerCase().replace(/ı/g,'i').replace(/[ğ]/g,'g').replace(/[ü]/g,'u').replace(/[ş]/g,'s').replace(/[ö]/g,'o').replace(/[ç]/g,'c');
+const isUserAcct=()=>!!userEmail&&userEmail.endsWith(USER_DOM);
+const authErr=e=>{const m=String(e&&e.message||e);return /already|registered|exists/i.test(m)?'Bu kullanıcı adı alınmış, başka bir tane dene.':/Invalid login|credentials/i.test(m)?'Kullanıcı adı ya da şifre yanlış.':/rate|too many/i.test(m)?'Çok fazla deneme yaptın, biraz bekle.':/at least|weak|short/i.test(m)?'Şifre en az 6 karakter olmalı.':'Olmadı: '+m;};
+function credsFrom(uEl,pEl,msgEl){const u=normUser(uEl.value);uEl.value=u;const pw=pEl.value;
+  if(!userOk(u)){msgEl.textContent='Kullanıcı adı 3–16 karakter olmalı: harf, rakam, _ ve . kullanabilirsin.';return null;}
+  if(pw.length<6){msgEl.textContent='Şifre en az 6 karakter olmalı.';return null;}return {u,pw};}
+async function setCreds(c){const {data,error}=await sb.auth.updateUser({email:c.u+USER_DOM,password:c.pw});if(error)throw error;
+  isAnon=!!data.user.is_anonymous;userEmail=data.user.email||c.u+USER_DOM;}
+let GMODE='guest';
+$('gateMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{GMODE=b.dataset.m;$('gateMode').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  $('gAcct').hidden=GMODE==='guest';$('gNickRow').hidden=GMODE==='login';$('gateGoogle').hidden=GMODE!=='guest';
+  $('gPass').autocomplete=GMODE==='reg'?'new-password':'current-password';
+  $('gateGo').textContent=GMODE==='login'?'Giriş yap':GMODE==='reg'?'Kayıt ol ve gir':'Oyuna gir';
+  $('gateMsg').textContent=GMODE==='login'?'Kullanıcı adın ve şifrenle gir; profilin, takımın ve puanın gelir.':GMODE==='reg'?'Kullanıcı adı ve şifreyle her cihazdan aynı hesapla girersin. E-posta gerekmez; şifreni unutma, sıfırlanamaz.':'Nick\'le hemen girersin. Kayıt olursan ya da Google ile bağlarsan profilin, takımın ve satın aldıkların her cihazda seninle gelir.';});
 $('gateForm').addEventListener('submit',async e=>{e.preventDefault();
+  if(GMODE!=='guest'){if(!LIVE){$('gateMsg').textContent='Üyelik canlı sitede çalışır.';return;}
+    const c=credsFrom($('gUser'),$('gPass'),$('gateMsg'));if(!c)return;
+    if(GMODE==='login'){$('gateGo').disabled=true;$('gateMsg').textContent='Giriş yapılıyor…';
+      const {error}=await sb.auth.signInWithPassword({email:c.u+USER_DOM,password:c.pw});
+      if(error){$('gateGo').disabled=false;$('gateMsg').textContent=authErr(error);return;}
+      try{localStorage.removeItem('uzk-profile'+SLOT);}catch(_){}location.reload();return;}
+    const n0=cleanStr($('gNick').value,14).trim();if(n0.length<2||hasBad(n0)||!/^[1-9][0-9]?$/.test(String($('gNum').value||'').trim())){$('gateMsg').textContent='Önce takma adını ve forma numaranı seç.';return;}
+    $('gateGo').disabled=true;$('gateMsg').textContent='Hesap oluşturuluyor…';
+    try{await setCreds(c);}catch(err){$('gateGo').disabled=false;$('gateMsg').textContent=authErr(err);return;}
+    $('gateGo').disabled=false;}
   const n=cleanStr($('gNick').value,14).trim();if(n.length<2){$('gateMsg').textContent='Takma ad en az 2 karakter olmalı.';return;}
   if(hasBad(n)){$('gateMsg').textContent='Bu takma ad uygun değil, başka bir ad seç.';return;}
   const jn=String($('gNum').value||'').trim();if(!/^[1-9][0-9]?$/.test(jn)){$('gateMsg').textContent='Forma numaranı seç (1–99).';return;}
@@ -2821,7 +2856,7 @@ function enterMain(){
   try{await backendInit();
     const p=await DB.getProfile().catch(()=>null);
     if(p){prof.name=p.nick||prof.name;prof.avatar=p.avatar||prof.avatar;prof.nameColor=p.name_color||prof.nameColor;JCARDS=Number(p.jersey_cards??1);save();}
-    $('gateGo').disabled=false;$('gateMsg').textContent='Nick\'le hemen girersin. Google ile bağlarsan profilin, takımın ve satın aldıkların her cihazda seninle gelir.';
+    $('gateGo').disabled=false;$('gateMsg').textContent='Nick\'le hemen girersin. Kayıt olursan ya da Google ile bağlarsan profilin, takımın ve satın aldıkların her cihazda seninle gelir.';
     if(prof.name&&p){$('gNick').value=prof.name;enterMain();}
   }catch(e){console.error(e);$('gateGo').disabled=false;$('gateMsg').textContent='Sunucuya bağlanılamadı ('+errText(e)+'). Yine de girip botlara karşı oynayabilirsin.';}
 })();

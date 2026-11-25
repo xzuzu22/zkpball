@@ -524,3 +524,5 @@ input[type=number]{background:#0b1811;border:1px solid var(--line);border-radius
 .sgrow code{font-weight:700;letter-spacing:.1em}
 .sgrow .ok{color:#7ee29a}.sgrow .off{color:var(--muted)}.sgrow .wait{color:var(--flood)}
 .sgfree{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-weight:600}
+.gseg{display:flex;gap:6px;flex-wrap:wrap}.gseg .chip{flex:1 1 0;justify-content:center}
+.acctform{display:flex;flex-direction:column;gap:8px}

@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="Zkpball">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800&family=Inter:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=c15cb6b">
+<link rel="stylesheet" href="style.css?v=f35bf4a">
 </head>
 <body>
 
@@ -24,8 +24,10 @@
   <div class="gate">
     <img class="logo" src="assets/logo.webp" alt="Zkpball" width="1103" height="200">
     <form class="panel" id="gateForm">
-      <div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1 1 0"><label class="lbl" for="gNick">Takma adını seç</label><input type="text" id="gNick" maxlength="14" autocomplete="nickname" placeholder="örn. Torriq"></div><div class="field" style="flex:0 0 82px"><label class="lbl" for="gNum">Forma no</label><input type="number" id="gNum" min="1" max="99" inputmode="numeric" placeholder="10"></div></div>
-      <p class="note" style="margin:-4px 0 0">Forma numaranı şimdi ücretsiz seçiyorsun. Sonra değiştirmek için forma değiştirme kartı gerekir (1 tane hediye).</p>
+      <div class="gseg" id="gateMode"><button type="button" class="chip" data-m="guest" aria-pressed="true">Misafir</button><button type="button" class="chip" data-m="reg" aria-pressed="false">Kayıt ol</button><button type="button" class="chip" data-m="login" aria-pressed="false">Giriş yap</button></div>
+      <div id="gAcct" hidden><div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1 1 0"><label class="lbl" for="gUser">Kullanıcı adı</label><input type="text" id="gUser" maxlength="16" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="harf, rakam, _ ve ."></div><div class="field" style="flex:1 1 0"><label class="lbl" for="gPass">Şifre</label><input type="password" id="gPass" maxlength="72" autocomplete="current-password" placeholder="en az 6 karakter"></div></div></div>
+      <div id="gNickRow"><div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1 1 0"><label class="lbl" for="gNick">Takma adını seç</label><input type="text" id="gNick" maxlength="14" autocomplete="nickname" placeholder="örn. Torriq"></div><div class="field" style="flex:0 0 82px"><label class="lbl" for="gNum">Forma no</label><input type="number" id="gNum" min="1" max="99" inputmode="numeric" placeholder="10"></div></div>
+      <p class="note" style="margin:-4px 0 0">Forma numaranı şimdi ücretsiz seçiyorsun. Sonra değiştirmek için forma değiştirme kartı gerekir (1 tane hediye).</p></div>
       <button class="big" type="submit" id="gateGo">Oyuna gir</button>
       <button class="ghost" type="button" id="gateGoogle" style="justify-content:center">Google ile bağlan</button>
       <p class="note" id="gateMsg">Nick'le hemen girersin. Google ile bağlarsan profilin, takımın ve satın aldıkların her cihazda seninle gelir.</p>
@@ -160,6 +162,10 @@
         <div class="panel">
           <h2>Hesap</h2>
           <p class="note" id="acctInfo"></p>
+          <form id="acctForm" class="acctform" hidden autocomplete="on"><div class="row" style="flex-wrap:nowrap"><div class="field" style="flex:1 1 0" id="afUserF"><label class="lbl" for="afUser">Kullanıcı adı</label><input type="text" id="afUser" maxlength="16" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="harf, rakam, _ ve ."></div><div class="field" style="flex:1 1 0"><label class="lbl" for="afPass">Şifre</label><input type="password" id="afPass" maxlength="72" autocomplete="new-password" placeholder="en az 6 karakter"></div></div><button class="chip go" type="submit" id="afGo">Kaydet</button><p class="note" id="afMsg" role="status"></p></form>
+          <button class="ghost" id="acctReg" style="justify-content:center" hidden>Kullanıcı adı ve şifre belirle</button>
+          <button class="ghost" id="acctLogin" style="justify-content:center" hidden>Başka hesapla giriş yap</button>
+          <button class="ghost" id="acctPass" style="justify-content:center" hidden>Şifremi değiştir</button>
           <button class="ghost" id="googleLink" style="justify-content:center">Google ile bağla</button>
           <button class="ghost" id="changeNick" style="justify-content:center">Çıkış yap</button>
         </div>
@@ -320,7 +326,7 @@
 </div></div>
 <div class="overlay statov" id="statOv" hidden><div class="panel" id="statBody"></div></div>
 
-<script type="module" src="app.js?v=c15cb6b"></script>
+<script type="module" src="app.js?v=f35bf4a"></script>
 <div class="invtoast" id="invToast" hidden></div>
 <div class="afktoast" id="afkToast" hidden></div>
 <div class="overlay adminov" id="adminOv" hidden><div class="panel adminpanel"><div class="row" style="justify-content:space-between;align-items:center"><b class="admtitle">Yönetici paneli</b><button class="chip" id="adminClose">Kapat</button></div><div id="adminBody"></div></div></div>
